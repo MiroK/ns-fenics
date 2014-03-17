@@ -1,7 +1,7 @@
 Various Navier-Stokes solvers implemented in FEniCS.
 
-Structure of solver-problem as well some problems and solvers are borrowed
-from the existing FEniCS Navier-Stokes solver, namely
+Structure of solver-problem as well as some problems and solvers are borrowed
+from the existing FEniCS Navier-Stokes solvers, namely
 
  nsbench    https://code.launchpad.net/~nsbench/nsbench/main 
  cbcflow    https://bitbucket.org/simula_cbc/cbcflow 
