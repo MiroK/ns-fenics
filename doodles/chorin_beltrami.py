@@ -106,6 +106,7 @@ def chorin_beltrami(n_cells):
 
   e_norm = sqrt(assemble(inner(u_exact - u0, u_exact - u0)*dx, mesh=mesh))
   u_norm = sqrt(assemble(inner(u_exact, u_exact)*dx, mesh=mesh))
+  error = e_norm/u_norm
 
   return u0, interpolate(u_exact, V), error
 

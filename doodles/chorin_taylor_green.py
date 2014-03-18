@@ -18,7 +18,7 @@ class PeriodicDomain(SubDomain):
   def inside(self, x, on_boundary):
       return bool((near(x[0], -1) or near(x[1], -1)) and\
               (not ((near(x[0], -1) and near(x[1], 1)) or 
-                    (near(x[0], 1) and near(x[1], -1)))) and on_boundary)
+              (near(x[0], 1) and near(x[1], -1)))) and on_boundary)
 
   def map(self, x, y):
     if near(x[0], 1) and near(x[1], 1):

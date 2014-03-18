@@ -13,15 +13,15 @@ set_log_level(WARNING)
 
 class InflowBoundary(SubDomain):
   def inside(self, x, on_boundary):
-    return near(x[0], 0)
+    return near(x[0], 0) and on_boundary
 
 class OutflowBoundary(SubDomain):
   def inside(self, x, on_boundary):
-    return near(x[0], 1)
+    return near(x[0], 1) and on_boudnary
 
 class NoslipBoundary(SubDomain):
   def inside(self, x, on_boundary):
-    return near(x[1]*(1 - x[1]), 0)
+    return near(x[1]*(1 - x[1]), 0) and on_boundary
 
 #---------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ def chorin_channel(n_cells):
   k = Constant(dt)               # time step 
   T = 0.5                        # total simulation time
   u0 = Constant((0., 0.))        # initial velocity
-  p0 = Constant(0.)              # initial pressure
+  p0 = Expression('1 - x[0]')    # initial pressure
 
   #! solver specific
   V = VectorFunctionSpace(mesh, 'CG', 2)
@@ -48,9 +48,6 @@ def chorin_channel(n_cells):
   v = TestFunction(V)
   p = TrialFunction(Q)
   q = TestFunction(Q)
-
-  u0 = Constant((0., 0.))
-  p0 = Expression('1 - x[0]')
 
   u0 = interpolate(u0, V)  
   p0 = interpolate(p0, Q)
