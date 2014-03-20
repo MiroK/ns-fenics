@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-__author__ = "Anders Logg <logg@simula.no>"
-__date__ = "2008-04-11"
-__copyright__ = "Copyright (C) 2008-2010 " + __author__
-__license__  = "GNU GPL version 3 or any later version"
+__author__ = 'Anders Logg <logg@simula.no>'
+__date__ = '2008-04-11'
+__copyright__ = 'Copyright (C) 2008-2010 ' + __author__
+__license__  = 'GNU GPL version 3 or any later version'
+
+# Modified by Miroslav Kuchta 2014
 
 import sys, time, os
 from dolfin import set_log_active, parameters, list_timings
@@ -14,34 +16,34 @@ from solvers import Solver, solvers
 mesh_sizes = [8, 11, 16, 23, 32, 45, 64]
 
 # Default options
-OPTIONS = {"refinement_level": [0,2],
-           "save_solution": True,
-           "save_frequency": 1,
-           "check_mem_usage": False,
-           "check_frequency": 10,
-           "save_solution_at_t=T": True,
-           "plot_solution": True,
-           "plot_functional": True,
-           "compute_divergence": False,
-  	       "debug": False,
-  	       "max_steps": None,
-           "results_dir" : "./results",
-           "krylov_solver_absolute_tolerance": 1e-25,
-           "krylov_solver_relative_tolerance": 1e-12,
-           "krylov_solver_monitor_convergence": False}
+OPTIONS = {'refinement_level': 0,
+           'save_solution': True,
+           'save_frequency': 1,
+           'check_mem_usage': False,
+           'check_frequency': 10,
+           'save_solution_at_t=T': True,
+           'plot_solution': True,
+           'plot_functional': True,
+           'compute_divergence': False,
+  	       'debug': False,
+  	       'max_steps': None,
+           'results_dir' : './results',
+           'krylov_solver_absolute_tolerance': 1e-25,
+           'krylov_solver_relative_tolerance': 1e-12,
+           'krylov_solver_monitor_convergence': False}
 
 def save_results(problem, solver, num_dofs, cputime, wct, functional, error):
-  "Save results to file."
+  'Save results to file.'
   # Print summary
-  print ""
-  print "Problem    |", problem
-  print "Solver     |", solver
-  print "Unknowns   |", num_dofs
-  print "CPU time   |", cputime
-  print "WCT time   |", wct
-  print "Overhead   |", wct - cputime
-  print "Functional |", functional
-  print "Error      |", error
+  print ''
+  print 'Problem    |', problem
+  print 'Solver     |', solver
+  print 'Unknowns   |', num_dofs
+  print 'CPU time   |', cputime
+  print 'WCT time   |', wct
+  print 'Overhead   |', wct - cputime
+  print 'Functional |', functional
+  print 'Error      |', error
 
   # Print DOLFIN summary
   set_log_active(True)
@@ -49,21 +51,21 @@ def save_results(problem, solver, num_dofs, cputime, wct, functional, error):
   
   # Append to file
   results_dir = problem.options['results_dir']
-  filename = "/".join([results_dir, 'results.log'])
+  filename = os.path.join(results_dir, 'results.log')
 
   # create the dir for results if needed
   if not os.path.exists(os.path.dirname(filename)):
     os.makedirs(os.path.dirname(filename))
 
   with open(filename, 'a') as f:
-    f.write("%s, %s, %s, %d, %.15g, %.15g, %.15g, %s\n" %
+    f.write('%s, %s, %s, %d, %.15g, %.15g, %.15g, %s\n' %
            (time.asctime(), problem, solver, num_dofs, cputime, wct, functional, str(error)))
 
 #------------------------------------------------------------------------------
 
 def usage():
-  "Print usage"
-  print """\
+  'Print usage'
+  print '''\
 Usage: ns problem solver
 
 Available problems:
@@ -73,13 +75,13 @@ Available problems:
 Available solvers:
 
 %s
-""" % ("\n".join("  " + p for p in problems),
-     "\n".join("  " + s for s in solvers))
+''' % ('\n'.join('  ' + p for p in problems),
+     '\n'.join('  ' + s for s in solvers))
 
 #------------------------------------------------------------------------------
 
 def main(args):
-  "Parse command-line arguments and run solver"
+  'Parse command-line arguments and run solver'
 
   # Check arguments
   if not len(args) >= 2:
@@ -93,27 +95,27 @@ def main(args):
   options = OPTIONS.copy()
   for arg in args[2:]:
     try:
-      key, value = arg.split("=")
+      key, value = arg.split('=')
       try:
         options[key] = eval(value)
       except:
         options[key] = str(value)
     except:
-      print "Warning: Unhandled command-line argument", arg
+      print 'Warning: Unhandled command-line argument', arg
 
-  parameters["form_compiler"]["cpp_optimize"] = True
+  parameters['form_compiler']['cpp_optimize'] = True
 
   # Set debug level
-  set_log_active(options["debug"])
+  set_log_active(options['debug'])
 
   # Set refinement level
-  options["N"] = mesh_sizes[options["refinement_level"]]
+  options['N'] = mesh_sizes[options['refinement_level']]
 
   # Create problem and solver
   problem = Problem(problem_name, options)
   solver = Solver(solver_name, options)
-  print "Problem: " + str(problem)
-  print "Solver:  " + str(solver)
+  print 'Problem: ' + str(problem)
+  print 'Solver:  ' + str(solver)
 
   # Solve problem with solver
   wct = time.time()
@@ -135,5 +137,5 @@ def main(args):
 
 #------------------------------------------------------------------------------
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   sys.exit(main(sys.argv[1:]))

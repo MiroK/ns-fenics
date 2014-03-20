@@ -1,16 +1,16 @@
-__author__ = "Anders Logg <logg@simula.no>"
-__date__ = "2008-03-19"
-__copyright__ = "Copyright (C) 2008-2010 " + __author__
-__license__  = "GNU GPL version 3 or any later version"
+__author__ = 'Anders Logg <logg@simula.no>'
+__date__ = '2008-03-19'
+__copyright__ = 'Copyright (C) 2008-2010 ' + __author__
+__license__  = 'GNU GPL version 3 or any later version'
 
 # Modified by MK, 2014
 
 from problembase import *
 
 # Constants related to the geometry
-x_min, x_max = 0, 2.2
-y_min, y_max = 0, 0.41
-c_x, c_y, r = 0.2, 0.2, 0.05
+x_min, x_max = 0, 2.2            # The domain is rect [x_min, x_max] x 
+y_min, y_max = 0, 0.41           # [y_min, y_max] with cylinder at of radius r
+c_x, c_y, r = 0.2, 0.2, 0.05     # centered at c_x, c_y
 
 # Problem definition
 class Problem(ProblemBase):
@@ -20,19 +20,16 @@ class Problem(ProblemBase):
 
     # Mesh is created by refining the region around cylinder 3 times
     # the initial resolution is given by 25 + 10*refinement_level
-
-    refinement_level = options["refinement_level"]
+    refinement_level = options['refinement_level']
+    resolution = 25 + 10*refinement_level
 
     rect = Rectangle(x_min, y_min, x_max, y_max)
     circ = Circle(c_x, c_y, r)
     domain = rect - circ
-
-    resolution = 25 + 10*refinement_level
     mesh = Mesh(domain, resolution)
 
     for i in range(3):
       mesh = refine_cylinder(mesh, c_x, c_y, r)
-
     self.mesh = mesh
 
     # Create right-hand side function
@@ -91,7 +88,7 @@ class Problem(ProblemBase):
       return -0.111444953719
 
   def __str__(self):
-    return "Cylinder"
+    return 'Cylinder'
 
 #---------------------------------------------------------------------
 
@@ -124,7 +121,7 @@ class OutflowBoundary(SubDomain):
 #---------------------------------------------------------------------
 
 class NoslipBoundary(SubDomain):
-  'Top, bottom and cylinder wall.'
+  'Top, bottom wall and cylinder surface.'
   def inside(self, x, on_boundary):
     dx = x[0] - c_x
     dy = x[1] - c_y

@@ -1,12 +1,14 @@
-__author__ = "Anders Logg <logg@simula.no> and Kent-Andre Mardal <kent-and@simula.no>"
-__date__ = "2008-03-03"
-__copyright__ = "Copyright (C) 2008-2010 " + __author__
-__license__  = "GNU GPL version 3 or any later version"
+__author__ = 'Anders Logg <logg@simula.no> and Kent-Andre Mardal <kent-and@simula.no>'
+__date__ = '2008-03-03'
+__copyright__ = 'Copyright (C) 2008-2010 ' + __author__
+__license__  = 'GNU GPL version 3 or any later version'
+
+# Modified by Miroslav Kuchta 2014
 
 from solverbase import *
 
 class Solver(SolverBase):
-  "Original pressure-correction scheme by Chorin and Temam."
+  'Original pressure-correction scheme by Chorin and Temam.'
   def __init__(self, options):
     SolverBase.__init__(self, options)
 
@@ -16,9 +18,9 @@ class Solver(SolverBase):
     dt, t, t_range = self.get_timestep(problem)
 
     # Define function spaces
-    V = VectorFunctionSpace(mesh, "CG", 2)
-    Q = FunctionSpace(mesh, "CG", 1)
-    DG = FunctionSpace(mesh, "DG", 0)
+    V = VectorFunctionSpace(mesh, 'CG', 2)
+    Q = FunctionSpace(mesh, 'CG', 1)
+    DG = FunctionSpace(mesh, 'DG', 0)
 
     # Get initial and boundary conditions
     u0, p0 = problem.initial_conditions(V, Q)
@@ -64,10 +66,11 @@ class Solver(SolverBase):
 
     solver1 = KrylovSolver('cg', 'petsc_amg')
     # Get the nullspace if there are no pressure boundary conditions
+    foo = Function(Q)     # auxiliary vector for setting pressure nullspace
     if not bcs_p:
-      null_vec = Vector(p0.vector())
+      null_vec = Vector(foo.vector())
       Q.dofmap().set(null_vec, 1.0)
-      null_vec *= 1.0/null_vec.norm("l2")
+      null_vec *= 1.0/null_vec.norm('l2')
       null_space = VectorSpaceBasis([null_vec])
       solver1.set_nullspace(null_space)
 
@@ -108,4 +111,4 @@ class Solver(SolverBase):
     return u1, p1
 
   def __str__(self):
-    return "Chorin"
+    return 'Chorin'

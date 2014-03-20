@@ -1,22 +1,26 @@
-__author__ = "Anders Logg <logg@simula.no>"
-__date__ = "2008-03-19"
-__copyright__ = "Copyright (C) 2008-2010 " + __author__
-__license__  = "GNU GPL version 3 or any later version"
+__author__ = 'Anders Logg <logg@simula.no>'
+__date__ = '2008-03-19'
+__copyright__ = 'Copyright (C) 2008-2010 ' + __author__
+__license__  = 'GNU GPL version 3 or any later version'
 
-# Modified by MK, 2014
+# Modified by Miroslav Kuchta 2014
 
 from problembase import *
+from numpy import cos, pi
 
 # Problem definition
 class Problem(ProblemBase):
-  "2D lid-driven cavity test problem with known reference value."
+  '2D lid-driven cavity test problem with known reference value.'
   def __init__(self, options):
     ProblemBase.__init__(self, options)
 
-    # Create mesh
-    N = options["N"]
+    # Create mesh and skew towards walls  as in Oasis
+    N = options['N']
     self.mesh = UnitSquare(N, N)
-
+    x = self.mesh.coordinates()
+    x[:] = (x - 0.5) * 2
+    x[:] = 0.5*(cos(pi*(x-1.) / 2.) + 1.) 
+    
     # Create right-hand side function
     self.f = Constant((0, 0))
 
@@ -54,7 +58,7 @@ class Problem(ProblemBase):
       psi = stream_function(u)
       psi_min = psi.vector().min()
 
-      print "Stream function has minimal value" , psi_min
+      print 'Stream function has minimal value' , psi_min
 
       return psi_min
 
@@ -66,28 +70,28 @@ class Problem(ProblemBase):
     return -0.061076605
 
   def __str__(self):
-      return "Driven cavity"
+      return 'Driven cavity'
 
 #--------------------------------------------------------------------
 
 def no_slip_domain(x, on_boundary):
-  '''The walls of the driven cavity problem.'''
+  'The walls of the driven cavity problem.'
   return on_boundary and (near(x[1], 0) or near(x[0]*(1 - x[0]), 0))
 
 #--------------------------------------------------------------------
 
 def driven_domain(x, on_boundary):
-  '''The lid of the driven cavity problem.'''
+  'The lid of the driven cavity problem.'
   return on_boundary and near(x[1], 1)
 
 #---------------------------------------------------------------------
 
 def stream_function(u):
-  '''Compute stream function of given 2-d velocity vector.'''
+  'Compute stream function of given 2-d velocity vector.'
   V = u.function_space().sub(0).collapse()
 
   if V.mesh().topology().dim() != 2:
-    raise ValueError("Only stream function in 2D can be computed.")
+    raise ValueError('Only stream function in 2D can be computed.')
 
   psi = TrialFunction(V)
   phi = TestFunction(V)
