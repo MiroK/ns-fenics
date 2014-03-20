@@ -5,7 +5,7 @@ __date__ = '2008-04-11'
 __copyright__ = 'Copyright (C) 2008-2010 ' + __author__
 __license__  = 'GNU GPL version 3 or any later version'
 
-# Modified by Miroslav Kuchta 2014
+# Modified by Miroslav Kuchta, 2014
 
 import sys, time, os
 from dolfin import set_log_active, parameters, list_timings
@@ -104,6 +104,10 @@ def main(args):
       print 'Warning: Unhandled command-line argument', arg
 
   parameters['form_compiler']['cpp_optimize'] = True
+  ffc_options = {"optimize": True, \
+                 "eliminate_zeros": True, \
+                 "precompute_basis_const": True, \
+                 "precompute_ip_const": True}
 
   # Set debug level
   set_log_active(options['debug'])

@@ -4,7 +4,7 @@ __copyright__ = 'Copyright (C) 2008-2010 ' + __author__
 __license__  = 'GNU GPL version 3 or any later version'
 
 # Modified by Kent-Andre Mardal, 2008.
-# Modified by Miroslav Kuchta 2014
+# Modified by Miroslav Kuchta, 2014
 
 from dolfin import *
 from math import *

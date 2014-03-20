@@ -3,7 +3,7 @@ __date__ = '2008-04-03'
 __copyright__ = 'Copyright (C) 2008-2010 ' + __author__
 __license__  = 'GNU GPL version 3 or any later version'
 
-# Modified by Miroslav Kuchta 2014
+# Modified by Miroslav Kuchta, 2014
 
 from dolfin import *
 
