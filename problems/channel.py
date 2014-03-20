@@ -20,7 +20,7 @@ class Problem(ProblemBase):
 
     # Create mesh
     N = options['N']
-    self.mesh = UnitSquare(N, N)
+    self.mesh = UnitSquareMesh(N, N)
 
     # Create right-hand side function with pressure gradient as body force
     self.f = Constant((0, 0))

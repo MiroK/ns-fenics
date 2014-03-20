@@ -31,7 +31,7 @@ class ProblemBase:
     self.U = 1.0         # maximal velocity, for time step computation
     self.output_location = ''
 
-  def update_problem(self, t, u, p):
+  def update_problem(self, t, u, p, f):
     'Update problem at time t.'
     # Update state
     self.t = t
@@ -39,9 +39,9 @@ class ProblemBase:
     self.p = p
 
     # Call problem-specific update
-    self.update(t, u, p)
+    self.update(t, u, p, f)
 
-  def update(self, t, u, p):
+  def update(self, t, u, p, f):
     'Problem-speficic update at time t.'
     pass
 

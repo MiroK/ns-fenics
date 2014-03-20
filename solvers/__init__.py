@@ -6,7 +6,7 @@ __license__  = 'GNU GPL version 3 or any later version'
 # Modified by Miroslav Kuchta, 2014
 
 # List of solvers
-solvers = ['chorin']
+solvers = ['chorin', 'ipcs0', 'ipcs1', 'ipcs2']
 
 # Wrapper for solver classes
 def Solver(name, options):

@@ -16,7 +16,7 @@ class Problem(ProblemBase):
 
     # Create mesh and skew towards walls  as in Oasis
     N = options['N']
-    self.mesh = UnitSquare(N, N)
+    self.mesh = UnitSquareMesh(N, N)
     x = self.mesh.coordinates()
     x[:] = (x - 0.5) * 2
     x[:] = 0.5*(cos(pi*(x-1.) / 2.) + 1.) 

@@ -68,7 +68,7 @@ class Problem(ProblemBase):
 
     return bcs_u, bcs_p, None
 
-  def update(self, t, u, p):
+  def update(self, t, u, p, f):
     'Update the expression for inlet velocity.'
     self.g0.t = t
 

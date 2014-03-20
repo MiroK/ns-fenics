@@ -38,6 +38,49 @@ class SolverBase:
     self._m = []
     self._e = []
 
+    # Set the form compiler options
+    if 'ffc_compiler_params' in options.keys():
+      self.ffc_options = options['ffc_compiler_params']
+    else:
+      self.ffc_options = None
+
+  def assemble(self, *args, **kwargs):
+    'Wrapper of assemble that considers ffc_compiler parameters.'
+    # Return regular assemble if there are no ffc
+    if self.ffc_options is None:
+      return assemble(*args, **kwargs)
+    # If kwargs has options for ffc those are the main ones else use global
+    else:
+      if 'form_compiler_parameters' in kwargs:
+        return assemble(*args, **kwargs)
+      else:
+        kwargs_temp = kwargs.copy()
+        kwargs_temp['form_compiler_parameters'] = self.ffc_options
+        return assemble(*args, **kwargs_temp)
+  
+  def assemble_system(self, *args, **kwargs):
+    'Wrapper of assemble_system that considers ffc_compiler parameters.'
+    # Return regular assemble_system if there are no ffc
+    if self.ffc_options is None:
+      return assemble_system(*args, **kwargs)
+    # If kwargs has options for ffc those are the main ones else use global
+    else:
+      if 'form_compiler_parameters' in kwargs:
+        return assemble_system(*args, **kwargs)
+      else:
+        kwargs_temp = kwargs.copy()
+        kwargs_temp['form_compiler_parameters'] = self.ffc_options
+        return assemble_system(*args, **kwargs_temp)
+        
+  def apply_krylov_solver_options(self, solver, options):
+    'Apply options to solver.'
+    for key, value in options.items():
+      try:
+        solver.parameters[key] = value
+      except KeyError:
+        print 'Invalid option %s for KrylovSolver' % key
+        exit()
+
   def get_timestep(self, problem):
     'Return time step and number of time steps for problem.'
     T = problem.T
@@ -45,17 +88,39 @@ class SolverBase:
     nu = problem.nu
     h  = problem.mesh.hmin()
 
-    # Set the time step from problem if available
-    if not problem.dt is None:
+    # Set the time step from problem data
+    dt_refine = int(self.options['dt_division'])
+    if problem.dt is not None:
       dt = problem.dt
-      print dt
-      n  = int(T / dt)
-      print 'Using problem.dt'
+      if dt_refine:
+        _dt = dt
+        dt /= int(sqrt(2)**dt_refine)
+        n  = int(T / dt + 1.0)
+        dt = T / n
+        print 'Using problem.dt and time step refinements %g -> %g' % (_dt, dt)
+      else:
+        print dt
+        n  = int(T / dt)
+        print 'Using problem.dt'
     else:
-      dt =  0.2*(h / U)
+      # Compute the time step using criteria
+      if self.options['viscosity_time_step']:
+        dt =  0.25*h**2 / (U*(nu + h*U))
+        print 'Computing time step according to viscosity stability criteria',
+      else:
+        dt =  0.2*(h / U)
+        print 'Computing time step according to CFL stability criteria',
+      
+      # Refine
+      if dt_refine:
+        _dt = dt
+        dt /= int(sqrt(2)**dt_refine)
+        print 'and time step refinements %g -> %g' % (_dt, dt)
+      else:
+        print ''
+      
       n  = int(T / dt + 1.0)
       dt = T / n
-      print 'Computing time step according to stability criteria'
 
     # Compute range
     t_range = linspace(0, T, n+1)[1:]
@@ -90,7 +155,7 @@ class SolverBase:
     s = self.__module__.split('.')[-1].lower()
     return os.path.join(root, problem.output_location, p, s)
 
-  def update(self, problem, t, u, p):
+  def update(self, problem, t, u, p, f):
     'Update problem at time t.'
     # Add to accumulated CPU time
     timestep_cputime = time() - self._time
@@ -100,7 +165,7 @@ class SolverBase:
     if self.options['compute_divergence']:
       check_divergence(u, p.function_space())
 
-    problem.update_problem(t, u, p)
+    problem.update_problem(t, u, p, f)
 
     # Evaluate functional and error
     m = problem.reference(t)
@@ -200,7 +265,7 @@ class SolverBase:
 
 def sigma(u, p, nu):
   'Return stress tensor.'
-  return 2*nu*sym(grad(u)) - p*Identity(u.cell().d)
+  return 2*nu*sym(grad(u)) - p*Identity(u.cell().topological_dimension())
 
 #------------------------------------------------------------------------------
 

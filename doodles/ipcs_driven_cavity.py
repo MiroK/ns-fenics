@@ -76,8 +76,8 @@ def ipcs_driven_cavity(n_cells):
   # tentative velocity
   U = 0.5*(u + u0)
   F0 = (1./k)*inner(u - u0, v)*dx + inner(dot(grad(u0), u0), v)*dx\
-       + inner(p0*n, v)*ds + nu*inner(grad(U), grad(v))*dx \
-       - inner(dot(n, grad(U)), v)*ds - inner(f, v)*dx
+       + inner(grad(p0), v)*dx + nu*inner(grad(U), grad(v))*dx \
+       - inner(f, v)*dx
   a0, L0 = system(F0)
 
   # projection

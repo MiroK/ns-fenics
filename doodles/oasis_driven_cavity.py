@@ -84,8 +84,8 @@ def oasis_driven_cavity(n_cells):
                  0.5*inner(dot(grad(u1), u1), v)*dx
 
   F0 = (1./k)*inner(u - u0, v)*dx + nonlinearity\
-       + inner(grad(p0), v)*ds + nu*inner(grad(U), grad(v))*dx \
-       - inner(dot(n, grad(U)), v)*ds - inner(f, v)*dx     # solve to u_
+       + inner(grad(p0), v)*dx + nu*inner(grad(U), grad(v))*dx \
+       - inner(f, v)*dx     # solve to u_
   a0, L0 = system(F0)
 
   # projection

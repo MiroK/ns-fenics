@@ -86,9 +86,9 @@ class Solver(SolverBase):
 
     # apply global options for Krylov solvers
     options = self.options
-    if 'krylov_solver' in options:
+    if 'krylov_solver_params' in options:
       for solver in [solver02, solver1]:
-        self.apply_krylov_solver_options(solver, options['krylov_solver'])
+        self.apply_krylov_solver_options(solver, options['krylov_solver_params'])
 
     # Time loop
     self.start_timing()

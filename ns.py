@@ -16,21 +16,28 @@ from solvers import Solver, solvers
 mesh_sizes = [8, 11, 16, 23, 32, 45, 64]
 
 # Default options
-OPTIONS = {'refinement_level': 0,
-           'save_solution': True,
-           'save_frequency': 1,
-           'check_mem_usage': False,
-           'check_frequency': 10,
-           'save_solution_at_t=T': True,
-           'plot_solution': True,
-           'plot_functional': True,
-           'compute_divergence': False,
-  	       'debug': False,
-  	       'max_steps': None,
-           'results_dir' : './results',
-           'krylov_solver_absolute_tolerance': 1e-25,
-           'krylov_solver_relative_tolerance': 1e-12,
-           'krylov_solver_monitor_convergence': False}
+OPTIONS = {'refinement_level' :      3, # which mesh to use, 3d has internal 
+           'viscosity_time_step' :   True, # t-step criterion uses viscosity
+           'dt_division' :           2, # refine the timestep
+           'save_solution' :         True,
+           'save_frequency' :        1,
+           'check_mem_usage' :       False,
+           'check_frequency' :       10,
+           'save_solution_at_t=T' :  True,
+           'plot_solution' :         True,
+           'plot_functional' :       True,
+           'compute_divergence' :    False,
+  	       'debug' :                 False,
+  	       'max_steps':              None,
+           'results_dir' :           './results',
+           'krylov_solver_params' :  {'absolute_tolerance': 1e-25,
+                                      'relative_tolerance': 1e-12,
+                                      'monitor_convergence': False},
+           'ffc_compiler_params' :   {'optimize': True, 
+                                      'eliminate_zeros': True, 
+                                      'precompute_basis_const': True, 
+                                      'precompute_ip_const': True}
+          }
 
 def save_results(problem, solver, num_dofs, cputime, wct, functional, error):
   'Save results to file.'
@@ -102,12 +109,9 @@ def main(args):
         options[key] = str(value)
     except:
       print 'Warning: Unhandled command-line argument', arg
-
-  parameters['form_compiler']['cpp_optimize'] = True
-  ffc_options = {"optimize": True, \
-                 "eliminate_zeros": True, \
-                 "precompute_basis_const": True, \
-                 "precompute_ip_const": True}
+  
+  # Set cpp_compiler options #TODO What exact does this do?
+  parameters["form_compiler"]["cpp_optimize"] = True
 
   # Set debug level
   set_log_active(options['debug'])

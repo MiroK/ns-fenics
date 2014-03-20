@@ -19,9 +19,13 @@ class Problem(ProblemBase):
 
     # Get the [-1, 1]^3 mesh
     mesh_sizes = [5, 8, 11, 16, 23, 32]
+    level_max = len(mesh_sizes) - 1
     level = options['refinement_level']
-    N = int(mesh_sizes[level])
+    
+    if level > level_max:
+      raise ValueError('Only %d refinement levels allowed' % level_max)
 
+    N = int(mesh_sizes[level])
     self.mesh = BoxMesh(-1, -1, -1, 1, 1, 1, N, N, N)
 
     # The body force term
@@ -67,11 +71,10 @@ class Problem(ProblemBase):
 
     return bcs_u, bcs_p, None
 
-  def update(self, t, u, p):
+  def update(self, t, u, p, f):
     print 'Time in update is:', t
     self.exact_u.t = t
     self.exact_p.t = t
-    pass
 
   def functional(self, t, u, p):
     print 'Time in functional is:', t

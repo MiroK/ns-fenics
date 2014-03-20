@@ -62,9 +62,9 @@ class Solver(SolverBase):
     a2, L2 = system(F2)
 
     # Assemble matrices
-    A0 = assemble(a0)
-    A1 = assemble(a1)
-    A2 = assemble(a2)
+    A0 = self.assemble(a0)
+    A1 = self.assemble(a1)
+    A2 = self.assemble(a2)
 
     # Create solvers; solver02 for tentative and finalize
     #                 solver1 for projection
@@ -82,13 +82,9 @@ class Solver(SolverBase):
 
     # apply global options for Krylov solvers
     options = self.options
-    for solver in [solver02, solver1]:
-      solver.parameters['absolute_tolerance'] = \
-                options['krylov_solver_absolute_tolerance']
-      solver.parameters['relative_tolerance'] = \
-                options['krylov_solver_relative_tolerance']
-      solver.parameters['monitor_convergence'] = \
-                options['krylov_solver_monitor_convergence']
+    if 'krylov_solver_params' in options:
+      for solver in [solver02, solver1]:
+        self.apply_krylov_solver_options(solver, options['krylov_solver_params'])
 
     # Time loop
     self.start_timing()
@@ -111,7 +107,7 @@ class Solver(SolverBase):
       solver02.solve(A2, u1.vector(), b)
 
       # Update
-      self.update(problem, t, u1, p1)
+      self.update(problem, t, u1, p1, f)
       u0.assign(u1)
 
     return u1, p1
