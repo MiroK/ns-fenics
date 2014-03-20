@@ -17,10 +17,16 @@ class Solver(SolverBase):
     mesh = problem.mesh
     dt, t, t_range = self.get_timestep(problem)
 
-    # Define function spaces
-    V = VectorFunctionSpace(mesh, 'CG', 2)
-    Q = FunctionSpace(mesh, 'CG', 1)
-    DG = FunctionSpace(mesh, 'DG', 0)
+    # Define function spaces, see if the problem has constrained domains
+    if hasattr(problem, 'constrained_domain'):
+      cd = problem.constrained_domain
+      message = 'Problem with constrained domain'
+      print '\033[1;35;35m%s\033[0m' % message
+    else:
+      cd = None
+
+    V = VectorFunctionSpace(mesh, 'CG', 2, constrained_domain=cd)
+    Q = FunctionSpace(mesh, 'CG', 1, constrained_domain=cd)
 
     # Get initial and boundary conditions
     u0, p0 = problem.initial_conditions(V, Q)

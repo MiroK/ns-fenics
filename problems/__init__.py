@@ -6,7 +6,7 @@ __license__  = 'GNU GPL version 3 or any later version'
 # Modified by Miroslav Kuchta, 2014
 
 # List of problems
-problems = ['drivencavity', 'cylinder', 'channel']
+problems = ['drivencavity', 'cylinder', 'channel', 'taylorgreen2d']
 
 # Wrapper of problem classes
 def Problem(name, options):
