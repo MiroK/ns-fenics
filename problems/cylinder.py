@@ -79,7 +79,9 @@ class Problem(ProblemBase):
     else:
       front = Point(c_x - r - DOLFIN_EPS, c_y)
       back = Point(c_x + r + DOLFIN_EPS, c_y)
-      return p(front) - p(back)
+      p_f = self.parallel_eval(p, front)
+      p_b = self.parallel_eval(p, back)
+      return p_f - p_b
 
   def reference(self, t):
     if t < self.T:

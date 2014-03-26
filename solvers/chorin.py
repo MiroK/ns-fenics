@@ -15,6 +15,7 @@ class Solver(SolverBase):
   def solve(self, problem):
     # Get problem parameters
     mesh = problem.mesh
+    
     dt, t, t_range = self.get_timestep(problem)
 
     # Define function spaces, see if the problem has constrained domains
@@ -44,6 +45,13 @@ class Solver(SolverBase):
     f  = problem.f
     u0 = interpolate(u0, V)  
     p0 = interpolate(p0, Q)
+
+    # Now that u0, p0 are functions, make sure that they comply with boundary
+    # conditions.
+    bcs = {'u' : bcs_u, 'p' : bcs_p}
+    ics = {'u' : u0, 'p' : p0}
+    self.apply_bcs_to_ics(bcs, ics)
+    
     us = Function(V)
     u1 = Function(V)
     p1 = Function(Q)
@@ -68,9 +76,9 @@ class Solver(SolverBase):
 
     # Create solvers; solver02 for tentative and finalize
     #                 solver1 for projection
-    solver02 = KrylovSolver('gmres', 'ilu')
+    solver02 = KrylovSolver('gmres', 'hypre_euclid')
 
-    solver1 = KrylovSolver('cg', 'petsc_amg')
+    solver1 = KrylovSolver('cg', 'hypre_amg')
     # Get the nullspace if there are no pressure boundary conditions
     foo = Function(Q)     # auxiliary vector for setting pressure nullspace
     if not bcs_p:

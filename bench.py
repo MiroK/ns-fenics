@@ -48,7 +48,16 @@ def main(args):
       resuts_dir = param.split('=')[1]
       use_default_results_dir = False
       break
-  
+
+  # Search for num processes in parameters
+  num_processes = 1        # one process is used if not more given
+  for param in parameters:
+    if 'num_processes' in param:
+      num_processes = int(param.split('=')[1])
+      parameters.remove(param)
+      break
+  print_color('Using %d processes.' % num_processes, 'yellow')
+ 
   # If not found take it from ns
   if use_default_results_dir:
     from ns import OPTIONS as options
@@ -64,78 +73,37 @@ def main(args):
 
   # Iterate over problems and solvers
   for (i, problem) in enumerate(problems):
-    print_color(problem, 'green')
+    print_color('  ' + problem, 'green')
     for (j, solver) in enumerate(solvers):
-      print_color('  ' + solver, 'blue')
+      print_color('    ' + solver, 'blue')
 
       # Solve problem with solver
-      output = commands.getoutput('./ns.py %s %s %s' % (problem,
-                                                        solver,
-                                                        ' '.join(parameters)))
-      
-      # Collect results
-      try:
-        cputime = float(output.split('CPU time   |')[1].split('\n')[0])
-        wct = float(output.split('WCT time   |')[1].split('\n')[0])
-        error = float(output.split('Error      |')[1].split('\n')[0])
-        cputimes[(i, j)] = (problem, solver, cputime)
-        errors[(i, j)] = (problem, solver, error)
-        print '  Finished in %g seconds' % wct
-      except:
-        cputimes[(i, j)] = (problem, solver, '***')
-        errors[(i, j)] = (problem, solver, '***')
-        print_color('  *** Failed!', 'red')
+      output = \
+      commands.getoutput('mpirun -np %d ./ns.py %s %s %s' % (num_processes,
+                                                             problem,
+                                                             solver,
+                                                             ' '.join(parameters)))
+      #try:
+      lines = output.split('\n')
+      kws = ['Error', 'Time step', 'Mesh size']
+      results = { kw : [] for kw in kws}
+      for line in lines:
+        for kw in kws:
+          if kw in line:
+            results[kw].append(line.split('|')[1].strip())
 
-      log_file = '/'.join([results_dir, 'bench.log'])
-      with open('results/bench.log', 'a') as f:
-        f.write('\n' + time.asctime() + '\n')
+      n = len(results[kws[0]])
+      for i in range(n):
+        output = []
+        for kw in kws:
+          output.append('%s = %8s' % (kw, results[kw][i]))
+        message = ' | '.join(output)
+        print_color('       %s' % message, 'cyan')
 
-  # Report results
-  print_table(cputimes, 'CPU times')
-  print_table(errors, 'Errors')
-
+      #except:
+      #  print_color('\t\t\t FAILED', 'red')
+        
   return 0
-
-#------------------------------------------------------------------------------
-
-def print_table(values, title):
-  'Print nicely formatted table.'
-
-  m = max([key[0] for key in values]) + 2
-  n = max([key[1] for key in values]) + 2
-
-  table = []
-  for i in range(m):
-    table.append(['' for j in range(n)])
-
-  for i in range(m - 1):
-    table[i + 1][0] = str(values[(i, 0)][0]).split(' ')[0]
-
-  for j in range(n - 1):
-    table[0][j + 1] = str(values[(0, j)][1]).split(' ')[0]
-
-  for i in range(m - 1):
-    for j in range(n - 1):
-      value = values[(i, j)][2]
-      if isinstance(value, float):
-        value = '%.5g' % value
-      table[i + 1][j + 1] = value
-
-  table[0][0] = title
-
-  column_sizes = [max([len(table[i][j]) for i in range(m)]) for j in range(n)]
-  row_size = sum(column_sizes) + 3*(len(column_sizes) - 1) + 2
-
-  print ''
-  for i in range(m):
-    print ' ' + '-'*row_size
-    print '|',
-    for j in range(n):
-      print table[i][j] + ' '*(column_sizes[j] - len(table[i][j])),
-      print '|',
-    print ''
-  print ' ' + '-'*row_size
-  print ''
 
 #------------------------------------------------------------------------------
 
@@ -147,6 +115,10 @@ def print_color(string, color):
     print '\033[1;37;32m%s\033[0m' % string
   elif color == 'red':
     print '\033[1;37;31m%s\033[0m' % string
+  elif color == 'yellow':
+    print '\033[1;33;33m%s\033[0m' % string
+  elif color == 'cyan':
+    print '\033[0;36;36m%s\033[0m' % string
   else:
     print string
 

@@ -72,16 +72,14 @@ class Problem(ProblemBase):
     return bcs_u, bcs_p, None
 
   def update(self, t, u, p, f):
-    print 'Time in update is:', t
     self.exact_u.t = t
     self.exact_p.t = t
 
   def functional(self, t, u, p):
-    print 'Time in functional is:', t
     if t < self.T:
       return 0.0
     else:
-      # L2 norm by default
+      # L2 norm by default, should be okay in parallel
       return errornorm(self.exact_u, u)/norm(self.exact_u, mesh=self.mesh)
 
   def reference(self, t):

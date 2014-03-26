@@ -7,6 +7,7 @@ __license__  = 'GNU GPL version 3 or any later version'
 
 from problembase import *
 from numpy import cos, pi
+from dolfin import MPI
 
 # Problem definition
 class Problem(ProblemBase):
@@ -34,7 +35,6 @@ class Problem(ProblemBase):
   def initial_conditions(self, V, Q):
     u0 = Constant((0, 0))
     p0 = Constant(0)
-
     return u0, p0
 
   def boundary_conditions(self, V, Q, t):
@@ -54,20 +54,19 @@ class Problem(ProblemBase):
     if t < self.T:
       return 0
     else:
-    # Compute stream function and report minimum
+      # Compute stream function and report minimum
       psi = stream_function(u)
-      psi_min = psi.vector().min()
-
-      print 'Stream function has minimal value' , psi_min
-
-      return psi_min
+      psi_min = psi.vector().min()   # local minimum
+      true_min = MPI.min(psi_min)    # minimum over all processes
+      
+      return true_min
 
   def reference(self, t):
     # Only check final time
     if t < self.T:
       return 0.0
-
-    return -0.061076605
+    else:
+      return -0.061076605
 
   def __str__(self):
       return 'Driven cavity'

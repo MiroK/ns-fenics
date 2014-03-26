@@ -52,6 +52,12 @@ class Solver(SolverBase):
     p0 = interpolate(p0, Q)  # previous pressure
     p_ = Function(Q)         # current pressure
     
+    # Now that u0, p0 are functions, make sure that they comply with boundary
+    # conditions.
+    bcs = {'u' : bcs_u, 'p' : bcs_p}
+    ics = {'u' : u0, 'p' : p0}
+    self.apply_bcs_to_ics(bcs, ics)
+    
     # Tentative velocity, solve to u1
     U = 0.5*(u + u0)
     U_ = 1.5*u0 - 0.5*u1
@@ -78,9 +84,9 @@ class Solver(SolverBase):
 
     # Create solvers; solver02 for tentative and finalize
     #                 solver1 for projection
-    solver02 = KrylovSolver('gmres', 'ilu')
+    solver02 = KrylovSolver('gmres', 'hypre_euclid')
 
-    solver1 = KrylovSolver('cg', 'petsc_amg')
+    solver1 = KrylovSolver('cg', 'hypre_amg')
     # Get the nullspace if there are no pressure boundary conditions
     foo = Function(Q)     # auxiliary vector for setting pressure nullspace
     if not bcs_p:

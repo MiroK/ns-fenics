@@ -60,15 +60,16 @@ class Problem(ProblemBase):
     if t < self.T:
         return 0
     else:
-        return 0.5*norm(u)**2
+        return 0.5*norm(u)**2 # should be ok with MPI
 
   def reference(self, t):
     if t < self.T:
         return 0
     else:
         self.exact_u.t = t
-        return 0.5*norm(self.exact_u,  mesh=self.mesh)**2
-
+        # should be ok with MPI
+        return 0.5*norm(self.exact_u,  mesh=self.mesh)**2 
+  
   def __str__(self):
     return "Taylor-Green 2D"
 

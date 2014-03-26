@@ -44,6 +44,29 @@ class SolverBase:
     else:
       self.ffc_options = None
 
+  def apply_bcs_to_ics(self, bcs, ics):
+    '''Apply boundary conditions to functions that are initial conditions.'''
+    # Make sure that the dictionaries of boundary and initial conditions
+    # are compatible.
+    if bcs.keys() == ics.keys():
+      for key in bcs.keys():
+        bc_list = bcs[key]
+        # Make sure we have boundary conditions as list
+        if not (type(bc_list) is list):
+          bc_list = [bc_list]
+        
+        # and also initial conditions as list
+        ic_list = ics[key]
+        if not (type(ic_list) is list):
+          ic_list = [ic_list]
+        
+        # Apply
+        for bc in bc_list:
+          for ic in ic_list:
+            bc.apply(ic.vector())
+    else:
+      raise ValueError("Keys must match in dictionaries!")
+
   def assemble(self, *args, **kwargs):
     'Wrapper of assemble that considers ffc_compiler parameters.'
     # Return regular assemble if there are no ffc
@@ -80,6 +103,12 @@ class SolverBase:
       except KeyError:
         print 'Invalid option %s for KrylovSolver' % key
         exit()
+    
+    # reuse the preconditioner
+    try:
+        solver.parameters['preconditioner']['structure'] = 'same'
+    except KeyError:
+        solver.parameters['preconditioner']['reuse'] = True
 
   def get_timestep(self, problem):
     'Return time step and number of time steps for problem.'
@@ -87,6 +116,10 @@ class SolverBase:
     U = problem.U
     nu = problem.nu
     h  = problem.mesh.hmin()
+
+    # Syncronize accross all processes so that we compute with same dt on all
+    if MPI.num_processes() > 1:
+      h = MPI.min(h)
 
     # Set the time step from problem data
     dt_refine = int(self.options['dt_division'])
@@ -97,27 +130,32 @@ class SolverBase:
         dt /= int(sqrt(2)**dt_refine)
         n  = int(T / dt + 1.0)
         dt = T / n
-        print 'Using problem.dt and time step refinements %g -> %g' % (_dt, dt)
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print 'Using problem.dt and time step refinements %g -> %g' % (_dt, dt)
       else:
-        print dt
         n  = int(T / dt)
-        print 'Using problem.dt'
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print 'Using problem.dt'
     else:
       # Compute the time step using criteria
       if self.options['viscosity_time_step']:
         dt =  0.25*h**2 / (U*(nu + h*U))
-        print 'Computing time step according to viscosity stability criteria',
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print 'Computing time step according to viscosity stability criteria',
       else:
         dt =  0.2*(h / U)
-        print 'Computing time step according to CFL stability criteria',
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print 'Computing time step according to CFL stability criteria',
       
       # Refine
       if dt_refine:
         _dt = dt
         dt /= int(sqrt(2)**dt_refine)
-        print 'and time step refinements %g -> %g' % (_dt, dt)
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print 'and time step refinements %g -> %g' % (_dt, dt)
       else:
-        print ''
+        if MPI.process_number() == 0 and self.options['verbose']:
+          print ''
       
       n  = int(T / dt + 1.0)
       dt = T / n
@@ -126,16 +164,22 @@ class SolverBase:
     t_range = linspace(0, T, n+1)[1:]
 
     # Report time step
-    print ' '
-    print 'Number of timesteps:' , len(t_range)
-    print 'Size of timestep:' , dt
-    print ' '
+    if MPI.process_number() == 0 and self.options['verbose']:
+      print ' '
+      print 'Number of timesteps:' , len(t_range)
+      print 'Size of timestep:' , dt
+      print ' '
 
     return dt, t_range[0], t_range
 
   def getMyMemoryUsage(self):
     mypid = os.getpid()
     mymemory = getoutput('ps -o rss %s' % mypid).split()[1]
+
+    # Convert to float and add memory from other processes if this is parallel
+    if MPI.num_processes > 1:
+      mymemory = MPI.sum(mymemory)
+
     return mymemory
 
   def start_timing(self):
@@ -172,10 +216,12 @@ class SolverBase:
     M = problem.functional(t, u, p)
     if m is None:
       e = None
-      print 'M = %g (missing reference value)' % M
+      if MPI.process_number() == 0 and self.options['verbose']:
+        print 'M = %g (missing reference value)' % M
     else:
       e = abs(M - m)
-      print 'M = %g (reference %g), error = %g (maximum %g)' % (M, m, e, max([e] + self._e))
+      if MPI.process_number() == 0 and self.options['verbose']:
+        print 'M = %g (reference %g), error = %g (maximum %g)' % (M, m, e, max([e] + self._e))
 
     # Store values
     self._t.append(t)
@@ -186,7 +232,7 @@ class SolverBase:
     # If there is going to be any saving make the directories
     if any(key for key in self.options.keys() if 'save' in key.lower()):
       results_dir = self.prefix(problem) 
-      if not os.path.exists(results_dir):
+      if not os.path.exists(results_dir) and (MPI.process_number() == 0):
         os.makedirs(results_dir)
     
     # Save solution
@@ -197,11 +243,13 @@ class SolverBase:
       if (self._timestep - 1) % frequency == 0:
         # Create files for saving
         if self._ufile is None:
-          u_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_u.pvd')
-          self._ufile = File(u_fname)
+          u_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_u.xdmf')
+          self._ufile = XDMFFile(u_fname)
+          self._ufile.parameters['rewrite_function_mesh'] = False
         if self._pfile is None:
-          p_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_p.pvd')
-          self._pfile = File(p_fname)
+          p_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_p.xdmf')
+          self._pfile = XDMFFile(p_fname)
+          self._pfile.parameters['rewrite_function_mesh'] = False
         self._ufile << u
         self._pfile << p
 
@@ -210,10 +258,10 @@ class SolverBase:
       if t >= problem.T:
         refinement = self.options['refinement_level']
         # Create files for saving, only happens once
-        u_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_at_end' +'_u.pvd')
-        ufile = File(u_fname)
-        p_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_at_end' + '_p.pvd')
-        pfile = File(p_fname)
+        u_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_at_end' +'_u.xdmf')
+        ufile = XDMFFile(u_fname)
+        p_fname = os.path.join(results_dir, 'refinement_level_' + str(refinement) + '_at_end' + '_p.xdmf')
+        pfile = XDMFFile(p_fname)
         ufile << u
         pfile << p
 
@@ -226,13 +274,15 @@ class SolverBase:
     # Check memory usage
     if self.options['check_mem_usage']:
       if (self._timestep - 1) % self.options['check_frequency'] == 0:
-        print 'Memory usage is:' , self.getMyMemoryUsage()
+        if MPI.process_number() == 0:
+          print 'Memory usage is:' , self.getMyMemoryUsage()
 
     # Print progress
-    print ''
-    s = 'Time step %d finished in %g seconds, %g%% done (t = %g, T = %g).' \
-        % (self._timestep, timestep_cputime, 100.0*(t / problem.T), t, problem.T)
-    print s + '\n' + len(s)*'-'
+    if MPI.process_number() == 0 and self.options['verbose']:
+      print ''
+      s = 'Time step %d finished in %g seconds, %g%% done (t = %g, T = %g).' \
+          % (self._timestep, timestep_cputime, 100.0*(t / problem.T), t, problem.T)
+      print s + '\n' + len(s)*'-'
 
     # Increase time step and record current time
     self._timestep += 1
@@ -243,13 +293,14 @@ class SolverBase:
     value on [0, T].'''
     # Plot values
     if self.options['plot_functional']:
-      import matplotlib.pyplot as plt
-      fig = plt.figure()
-      plt.plot(self._t, self._M)
-      plt.xlabel(r'$t$')
-      plt.ylabel(r'Functional')
-      plt.grid(True)
-      plt.show()
+      if MPI.process_number() == 0:
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        plt.plot(self._t, self._M)
+        plt.xlabel(r'$t$')
+        plt.ylabel(r'Functional')
+        plt.grid(True)
+        plt.show()
 
     # Return value
     if self._e[0] is None:

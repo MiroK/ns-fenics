@@ -8,6 +8,7 @@ __license__  = 'GNU GPL version 3 or any later version'
 
 from dolfin import *
 from math import *
+from mpi4py import MPI as mpi
 
 class ProblemBase:
   'Base class for all problems.'
@@ -61,3 +62,40 @@ class ProblemBase:
         return 1e-7
     else:
         return 1e-6
+
+  def parallel_eval(self, u, x):
+    '''Evaluate u in x in parallel. The call u(x) fails if x in not
+    on the process. Correct value is distributed from processes that
+    successfully completed evaluation.'''    
+    
+    value = None
+    found = 0
+
+    # See which process evaluates fine
+    try:
+      value = u(x)
+      found = 1
+    except:
+      pass
+
+    # Communicate who has found the point
+    comm = mpi.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    found = comm.allgather(found)
+    assert len(found) == MPI.num_processes()
+    
+    # The first process with the point is root
+    root = -1
+    for i in range(len(found)):
+      if found[i]:
+        root = i
+        break
+    
+    # Get the value on all processes
+    value = comm.bcast(value, root=root)
+
+    return value
+
+

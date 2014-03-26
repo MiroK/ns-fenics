@@ -10,7 +10,6 @@ __license__  = 'GNU GPL version 3 or any later version'
 # Modified by Miroslav Kuchta, 2014
 
 from problembase import *
-from numpy import array
 
 # Problem definition
 class Problem(ProblemBase):
@@ -54,10 +53,9 @@ class Problem(ProblemBase):
     if t < self.T:
       return 0
     else:
-      x = array((1.0, 0.5))
-      values = array((0.0 , 0.0))
-      u.eval(values, x)   # u_x at (1, 0.5) 
-      return values[0]
+      x = Point(1.0, 0.5)
+      values = self.parallel_eval(u, x)
+      return values[0] # u_x at (1, 0.5) 
 
   def reference(self, t):
     if t < self.T:
