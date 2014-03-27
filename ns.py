@@ -41,9 +41,9 @@ OPTIONS = {'refinement_level' :      [0, 1, 2],\
            'krylov_solver_params' :  {'absolute_tolerance': 1e-25,
                                       'relative_tolerance': 1e-12,
                                       'monitor_convergence': False},
-           'ffc_compiler_params' :   {'optimize': True, 
-                                      'eliminate_zeros': True, 
-                                      'precompute_basis_const': True, 
+           'ffc_compiler_params' :   {'optimize': True,
+                                      'eliminate_zeros': True,
+                                      'precompute_basis_const': True,
                                       'precompute_ip_const': True}
           }
 
@@ -63,7 +63,7 @@ def save_results(problem, solver, num_dofs, mesh_size, time_step, functional, er
     # Print DOLFIN summary
     set_log_active(True)
     list_timings()
-    
+
     # Append to file, let each dx, dt have its own log file
     results_dir = problem.options['results_dir']
     dx = problem.options['refinement_level']
@@ -121,11 +121,11 @@ def main(args):
         options[key] = str(value)
     except:
       print 'Warning: Unhandled command-line argument', arg
-  
+
   # Parse the spatial and time stepping options.
   # If either refinement_level or dt_division are lists feed the items of
   # list one by one
-  type_dx = type(options['refinement_level']) 
+  type_dx = type(options['refinement_level'])
   type_dt = type(options['dt_division'])
 
   if type_dx is list:
@@ -134,18 +134,28 @@ def main(args):
       if MPI.process_number() == 0:
         print_color('Dx convergence study, dt=%d' % options['dt_division'], 'cyan')
       refinement_levels = copy.copy(options['refinement_level'])
-      
+
       # loop over dx
       for refinement_level in refinement_levels:
         if MPI.process_number() == 0:
           print_color('\tRefinement level %d' % refinement_level, 'yellow')
         options['refinement_level'] = refinement_level
         # solve with fixed dt and changing dx
+
+        # Warn user about running dx convergence with changing dt, this happens
+        # if problem has no dt
+        _options = options.copy()
+        _options['N'] = mesh_sizes[_options['refinement_level']]
+        _problem = Problem(problem_name, _options)
+
+        if _problem.dt is None:
+          print_color('        Warning: Dx convergence study with changing dt', 'pink')
+
         solve(solver_name, problem_name, options)
-    
+
     else:
       raise ValueError('Use fixed dt_division with changing refinement_level!')
-  
+
   elif type_dx is int:
     if type_dt is list:
       # Do a dt convergence study
@@ -156,17 +166,17 @@ def main(args):
       # loop over dt
       for dt_division in dt_divisions:
         if MPI.process_number() == 0:
-          print_color('\tDt division %d' % dt_division, 'yellow')  
+          print_color('\tDt division %d' % dt_division, 'yellow')
         options['dt_division'] = dt_division
         #solve with fixed dx and changing dt
         solve(solver_name, problem_name, options)
-    
+
     elif type(options['dt_division']) is int:
       if MPI.process_number() == 0:
         print_color('Fixed dx and dt', 'cyan')
       # solve with fixed dx and fixed dt
       solve(solver_name, problem_name, options)
-    
+
     else:
       raise ValueError("options['dt_division'] must be int of list!")
   else:
@@ -179,7 +189,7 @@ def main(args):
 def solve(solver_name, problem_name, options):
   'Solve the problem by solver with options.'
 
-  # Set cpp_compiler options 
+  # Set cpp_compiler options
   parameters["form_compiler"]["cpp_optimize"] = True
 
   # Set debug level

@@ -54,12 +54,12 @@ class SolverBase:
         # Make sure we have boundary conditions as list
         if not (type(bc_list) is list):
           bc_list = [bc_list]
-        
+
         # and also initial conditions as list
         ic_list = ics[key]
         if not (type(ic_list) is list):
           ic_list = [ic_list]
-        
+
         # Apply
         for bc in bc_list:
           for ic in ic_list:
@@ -80,7 +80,7 @@ class SolverBase:
         kwargs_temp = kwargs.copy()
         kwargs_temp['form_compiler_parameters'] = self.ffc_options
         return assemble(*args, **kwargs_temp)
-  
+
   def assemble_system(self, *args, **kwargs):
     'Wrapper of assemble_system that considers ffc_compiler parameters.'
     # Return regular assemble_system if there are no ffc
@@ -94,7 +94,7 @@ class SolverBase:
         kwargs_temp = kwargs.copy()
         kwargs_temp['form_compiler_parameters'] = self.ffc_options
         return assemble_system(*args, **kwargs_temp)
-        
+
   def apply_krylov_solver_options(self, solver, options):
     'Apply options to solver.'
     for key, value in options.items():
@@ -103,7 +103,7 @@ class SolverBase:
       except KeyError:
         print 'Invalid option %s for KrylovSolver' % key
         exit()
-    
+
     # reuse the preconditioner
     try:
         solver.parameters['preconditioner']['structure'] = 'same'
@@ -146,7 +146,7 @@ class SolverBase:
         dt =  0.2*(h / U)
         if MPI.process_number() == 0 and self.options['verbose']:
           print 'Computing time step according to CFL stability criteria',
-      
+
       # Refine
       if dt_refine:
         _dt = dt
@@ -156,7 +156,7 @@ class SolverBase:
       else:
         if MPI.process_number() == 0 and self.options['verbose']:
           print ''
-      
+
       n  = int(T / dt + 1.0)
       dt = T / n
 
@@ -231,10 +231,10 @@ class SolverBase:
 
     # If there is going to be any saving make the directories
     if any(key for key in self.options.keys() if 'save' in key.lower()):
-      results_dir = self.prefix(problem) 
+      results_dir = self.prefix(problem)
       if not os.path.exists(results_dir) and (MPI.process_number() == 0):
         os.makedirs(results_dir)
-    
+
     # Save solution
     if self.options['save_solution']:
       # Save velocity and pressure

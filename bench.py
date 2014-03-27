@@ -7,7 +7,7 @@ __license__  = 'GNU GPL version 3 or any later version'
 
 # Modified by Miroslav Kuchta, 2014
 
-import sys, commands, time
+import sys, commands
 from problems import problems as bench_problems
 from solvers import solvers as bench_solvers
 
@@ -41,14 +41,6 @@ def main(args):
     usage()
     exit(1)
 
-  # Search for results_dir in parameters
-  use_default_results_dir = True
-  for param in parameters:
-    if 'results_dir' in param:
-      resuts_dir = param.split('=')[1]
-      use_default_results_dir = False
-      break
-
   # Search for num processes in parameters
   num_processes = 1        # one process is used if not more given
   for param in parameters:
@@ -57,19 +49,22 @@ def main(args):
       parameters.remove(param)
       break
   print_color('Using %d processes.' % num_processes, 'yellow')
- 
+
+  # Search for results_dir in parameters
+  use_default_results_dir = True
+  for param in parameters:
+    if 'results_dir' in param:
+      use_default_results_dir = False # result dir is fed to ns as cmdl arg
+      break
+
   # If not found take it from ns
   if use_default_results_dir:
     from ns import OPTIONS as options
     try:
-      results_dir = options['results_dir']
+      options['results_dir']          # result dir will be found from options
     except KeyError:
       print 'Set resuts_dir in ns.OPTIONS or provide is command-line argument!'
       exit()
-      
-  # Collect results in tables
-  cputimes = {}
-  errors = {}
 
   # Iterate over problems and solvers
   for (i, problem) in enumerate(problems):
@@ -102,7 +97,7 @@ def main(args):
 
       #except:
       #  print_color('\t\t\t FAILED', 'red')
-        
+
   return 0
 
 #------------------------------------------------------------------------------
@@ -119,6 +114,8 @@ def print_color(string, color):
     print '\033[1;33;33m%s\033[0m' % string
   elif color == 'cyan':
     print '\033[0;36;36m%s\033[0m' % string
+  elif color == 'pink':
+    print '\033[1;31;31m%s\033[0m' % string
   else:
     print string
 
