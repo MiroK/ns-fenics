@@ -45,7 +45,7 @@ class CylinderFlow(object):
                                 on_circle(x, on_boundary, *cls.circle))
 
     Re = Constant(1000)
-    U_max = 3.5
+    U_max = 1.5
     u_in = Expression(('4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/8.0)/(ymax*ymax)',
                        '0.0'),
                       Um=U_max, ymax=y_max, t=0)
