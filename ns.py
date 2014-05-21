@@ -17,7 +17,7 @@ from bench import print_color
 mesh_sizes = [8, 11, 16, 23, 32, 45, 64]
 
 # Default options
-OPTIONS = {'refinement_level' :      [0, 1, 2],\
+OPTIONS = {'refinement_level' :      0,\
            # which mesh to use, 3d has internal, either int - use given mesh
            # or list - use sequence of meshes, suitable for convergence rate
            # studies
