@@ -1,4 +1,7 @@
 *.pyc
 *~
 results
+.swp
+*.xml
+*.msh
 

@@ -49,5 +49,6 @@ x = (B-V)/dot(B-V, B-V)
 y = (S-B)/dot(S-B, S-B)
 
 print sqrt(dot(S-R, S-R))
+print sqrt(dot(A-Q, A-Q)), 4*u + 4*u*cos(pi/4)
 
 print dot(x, y), arccos(dot(x, y))*180/pi

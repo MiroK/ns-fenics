@@ -38,3 +38,7 @@ Circle(11) = {1, 9, 3};
 Line Loop(12) = {6, 7, 9, 8, -11, -5, -10};
 Line Loop(13) = {1, 2, 3, 4};
 Plane Surface(14) = {12, 13};
+
+Physical Surface(15) = {14};
+Physical Line(16) = {5, 11, 8, 2, 3, 4, 1, 7, 6};
+Physical Line(17) = {10};
