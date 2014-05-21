@@ -1,4 +1,4 @@
-from elements import all_elements, make_mixed_function_space
+from elements import all_elements, make_function_spaces
 from problems import all_problems
 from dolfin import *
 import os
@@ -15,18 +15,16 @@ def mixed_solve(problem, element, solver_name):
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
-    return None
-
     # Extract information from problem
     mesh = problem.mesh
 
-    noslip_boundary = problem.noslip_boundary
-    inflow_boundary = problem.inflow_boundary
+    noslip_boundary = lambda x, on_boundary: problem.noslip_boundary(x, on_boundary)
+    inflow_boundary = lambda x, on_boundary: problem.inflow_boundary(x, on_boundary)
     u_in = problem.u_in
     Re = problem.Re
 
     # Create function space with element
-    M = make_mixed_function_space(mesh, element)
+    V, Q, M = make_function_spaces(mesh, element)
 
     # Noslip bc is not time-dependent and can be created now
     bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), noslip_boundary)
@@ -38,7 +36,7 @@ def mixed_solve(problem, element, solver_name):
     v, q = split(vq)
 
     # Current solution
-    up0 = Function(M)
+    up0 = interpolate(Constant((1, 0, 0)), M)
     u0, p0 = split(up0)
 
     # Previous solution
@@ -51,6 +49,7 @@ def mixed_solve(problem, element, solver_name):
     k = dt**-1
 
     # Loads
+    f = Constant((0., 0.))
     f0 = interpolate(f, V)
     f1 = interpolate(f, V)
 
@@ -71,13 +70,15 @@ def mixed_solve(problem, element, solver_name):
     a, L = system(F)
 
     t = 0
-    T = 0.2
+    T = 8
     step = 0
 
+    u_out = XDMFFile(os.path.join(results_dir, 'u.xdmf'))
+    u_out.parameters['rewrite_function_mesh'] = False
+    u_plot = Function(V)
     while t < T:
         t += float(dt)
         step += 1
-        print t
 
         u_in.t = t
         bc_inflow = DirichletBC(M.sub(0), u_in, inflow_boundary)
@@ -91,7 +92,10 @@ def mixed_solve(problem, element, solver_name):
             f0.assign(f1)
 
         if not step%10:
-            pass
+            # print t
+            u_plot.assign(up0.split(True)[0])
+            plot(u_plot, title='%g' % t)
+            u_out << u_plot, t
 
     # Check global mass conservation
     n = FacetNormal(mesh)
@@ -102,7 +106,7 @@ def mixed_solve(problem, element, solver_name):
 
     # Check local divergence following Mikael
     v_degree = V.ufl_element().degree()
-    if v_degree:
+    if v_degree-1:
         Div_space = FunctionSpace(mesh, 'CG', v_degree-1)
     else:
         Div_space = FunctionSpace(mesh, 'DG', v_degree-1)
@@ -110,12 +114,23 @@ def mixed_solve(problem, element, solver_name):
     div_u = project(div(u0), Div_space)
     local_div_mikael = norm(div_u, 'L2')
 
-    print 'Global: %g, Mikael: %g, Garth: %g' %\
-        (global_div, local_div_mikael, local_div_garth)
+    return '%s %s Global: %g, Mikael: %g, Garth: %g' %\
+        (problem.name, solver_name, global_div, local_div_mikael, local_div_garth)
 
 if __name__ == '__main__':
-    names = all_elements.keys()
-    element, solver_name = all_elements[names[0]], names[0]
+    import sys
+    solver_names = [(i, name) for i, name in enumerate(all_elements.keys())]
     problem = all_problems[0]
 
-    mixed_solve(problem, element, solver_name)
+    print 'Available solvers', [(i, name) for i, name in enumerate(solver_names)]
+
+    # i = int(raw_input('Pick solver: '))
+    i = int(sys.argv[1])
+    if -1 < i < len(solver_names):
+        solver_name = solver_names[i][1]
+        element = all_elements[solver_name]
+        result = mixed_solve(problem, element, solver_name)
+        with open('data.txt', 'a') as f:
+            f.write('%s\n' % result)
+    else:
+        exit()
