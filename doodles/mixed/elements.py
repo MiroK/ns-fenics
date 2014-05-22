@@ -24,6 +24,13 @@ class CrouzeixRaviart(object):
     Q = [['DG', 1]]
 
 
+class CrDG(object):
+    'CR1+DG0 element'
+    name = 'cr-dg'
+    V = [['CR', 1]]
+    Q = [['DG', 0]]
+
+
 def make_function_spaces(mesh, element):
     'Create mixed function space on the mesh.'
     assert hasattr(element, 'V') and hasattr(element, 'Q')
@@ -43,4 +50,4 @@ def make_function_spaces(mesh, element):
     return V, Q, M
 
 # Put all to list for import
-all_elements = [TaylorHood, CrouzeixRaviart, Mini]
+all_elements = [TaylorHood, CrouzeixRaviart, Mini, CrDG]
