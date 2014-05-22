@@ -18,7 +18,7 @@ def make_function_spaces(mesh, element):
     assert 'V' in element.keys() and 'Q' in element.keys()
 
     # Create velocity space
-    n = len(element['Q'])
+    n = len(element['V'])
     assert n > 0
     V = VectorFunctionSpace(mesh, *element['V'][0])
     for i in range(1, n):

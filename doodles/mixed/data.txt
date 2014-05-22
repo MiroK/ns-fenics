@@ -1,3 +1,12 @@
 cylinder mini Global: 3.14779e-16, Mikael: 0.359449, Garth: 0.359449
 cylinder crouzeix-raviart Global: -2.1524e-13, Mikael: 1.53372e-11, Garth: 3.67822e-11
 cylinder taylor-hood Global: -7.49184e-17, Mikael: 2.59726e-14, Garth: 0.583733
+None
+None
+None
+None
+None
+None
+cylinder mini Global: -8.26524e-15, Mikael: 0.467113, Garth: 0.647677
+cylinder taylor-hood Global: -2.20093e-17, Mikael: 2.82801e-14, Garth: 0.583733
+cylinder crouzeix-raviart Global: -7.52798e-14, Mikael: 0.0463299, Garth: 0.124633

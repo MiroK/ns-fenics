@@ -22,12 +22,15 @@ def mixed_solve(problem, element, solver_name):
     inflow_boundary = lambda x, on_boundary: problem.inflow_boundary(x, on_boundary)
     u_in = problem.u_in
     Re = problem.Re
+    f = problem.f
 
     # Create function space with element
     V, Q, M = make_function_spaces(mesh, element)
 
     # Noslip bc is not time-dependent and can be created now
     bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), noslip_boundary)
+    bc_inflow = DirichletBC(M.sub(0), u_in, inflow_boundary)
+    bcs = [bc_noslip, bc_inflow]
 
     up = TrialFunction(M)
     u, p = split(up)
@@ -36,7 +39,7 @@ def mixed_solve(problem, element, solver_name):
     v, q = split(vq)
 
     # Current solution
-    up0 = interpolate(Constant((1, 0, 0)), M)
+    up0 = interpolate(Constant((0, 0, 0)), M)
     u0, p0 = split(up0)
 
     # Previous solution
@@ -49,7 +52,6 @@ def mixed_solve(problem, element, solver_name):
     k = dt**-1
 
     # Loads
-    f = Constant((0., 0.))
     f0 = interpolate(f, V)
     f1 = interpolate(f, V)
 
@@ -57,7 +59,7 @@ def mixed_solve(problem, element, solver_name):
 
     # Form for the first time step
     F0 = k*inner(u - u0, v)*dx + inner(dot(grad(u), u0), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
+        Re**-1*inner(grad(u_cn), grad(v))*dx + inner(p, div(v))*dx +\
         inner(q, div(u))*dx - inner(f0, v)*dx
     a0, L0 = system(F0)
 
@@ -81,8 +83,6 @@ def mixed_solve(problem, element, solver_name):
         step += 1
 
         u_in.t = t
-        bc_inflow = DirichletBC(M.sub(0), u_in, inflow_boundary)
-        bcs = [bc_noslip, bc_inflow]
 
         if step == 1:
             solve(a0 == L0, up0, bcs)
