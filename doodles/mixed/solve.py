@@ -17,9 +17,8 @@ def mixed_solve(problem, element, solver_name):
 
     # Extract information from problem
     mesh = problem.mesh
-
-    noslip_boundary = lambda x, on_boundary: problem.noslip_boundary(x, on_boundary)
-    inflow_boundary = lambda x, on_boundary: problem.inflow_boundary(x, on_boundary)
+    noslip_boundary = problem.noslip
+    inflow_boundary = problem.inflow
     u_in = problem.u_in
     Re = problem.Re
     f = problem.f
@@ -28,8 +27,8 @@ def mixed_solve(problem, element, solver_name):
     V, Q, M = make_function_spaces(mesh, element)
 
     # Noslip bc is not time-dependent and can be created now
-    bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), noslip_boundary)
-    bc_inflow = DirichletBC(M.sub(0), u_in, inflow_boundary)
+    bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), *noslip_boundary)
+    bc_inflow = DirichletBC(M.sub(0), u_in, *inflow_boundary)
     bcs = [bc_noslip, bc_inflow]
 
     up = TrialFunction(M)
