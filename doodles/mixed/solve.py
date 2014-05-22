@@ -21,6 +21,7 @@ def mixed_solve(problem, element):
     noslip_boundary = problem.noslip
     inflow_boundary = problem.inflow
     u_in = problem.u_in
+    U_max = problem.U_max
     Re = problem.Re
     f = problem.f
 
@@ -48,7 +49,7 @@ def mixed_solve(problem, element):
 
     # Time step
     h = mesh.hmin()
-    dt = Constant(0.001)
+    dt = Constant(0.5*h/U_max)
     k = dt**-1
 
     # Loads
@@ -85,20 +86,20 @@ def mixed_solve(problem, element):
     while t < T:
         t += float(dt)
         step += 1
-        print 'step number:', step, 'time', t
+        print '\nstep number =', step, ', time =', t
 
         u_in.t = t
 
         # Pickard loop
         iter = 0
-        iter_max = 1
+        iter_max = 40
         tol = 1E-4
         converged = False
-        errors = []
+        e0 = None
         E = None
         while not converged and iter < iter_max:
             iter += 1
-            print '\titer number:', iter
+            print '\titer number =', iter
 
             # Remeber the old solution
             up_.assign(up0)
@@ -106,31 +107,29 @@ def mixed_solve(problem, element):
             # Get new solution with relaxation
             if step == 1:
                 solve(a0 == L0, up0, bcs)
-                #up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
+                up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
             else:
                 solve(a0 == L0, up0, bcs)
-                #up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
-                #up1.assign(up0)
-                #f0.assign(f1)
+                up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
+                up1.assign(up0)
+            f0.assign(f1)
 
             # Compute the error and decide convergence
-            #e = norm(u0, 'l2')
-            #errors.append(e)
+            e = norm(u0, 'l2')
             if iter < 2:
+                e0 = e
                 converged = False
             else:
-            #    e0 = errors[-1]  # Current error
-            #    e1 = errors[-2]  # Previous error
-            #    E = abs(e1 - e0)/(e1 + e0)
-            #    converged = E < tol
-                pass
+                E = abs(e - e0)/(e + e0)
+                converged = E < tol
+                e0 = e
 
-            print '\t ', E
+            print '\t error =', E
 
-        #if not step % 10:
-        u_plot.assign(up0.split(True)[0])
-        plot(u_plot, title='%g' % t)
-        u_out << u_plot, t
+        if not step % 10:
+            u_plot.assign(up0.split(True)[0])
+            plot(u_plot, title='%s @ %g' % (element.name, t))
+            u_out << u_plot, t
 
     # Check global mass conservation
     n = FacetNormal(mesh)

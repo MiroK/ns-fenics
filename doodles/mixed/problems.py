@@ -51,7 +51,7 @@ class LCylinderFlow(object):
     noslip = [f_f, 16]
 
     Re = Constant(1000)
-    U_max = 3.5
+    U_max = 1
     unit = 0.1
     y_max = 4*unit + 4*unit*cos(pi/4)
     u_in = Expression(('-4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/8.0)/(ymax*ymax)',
