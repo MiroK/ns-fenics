@@ -67,9 +67,11 @@ f_f = FacetFunction('size_t', mesh, 0)
 InflowBoundary().mark(f_f, 13)
 NoslipBoundary().mark(f_f, 12)
 
+
 # Width of the L domain
 def compute_width_L_cylinder(unit):
     return 4*unit + 4*unit*cos(pi/4)
+
 
 # Width of the O domain
 def compute_width_O_cylinder(unit):
@@ -126,6 +128,7 @@ class InflowProfilePeriodic(Expression):
         return (2, )
 
 # ------------------------------------------------------------------------------
+
 
 class CylinderFlow(object):
     'Flow past a cylinder'
