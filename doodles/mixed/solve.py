@@ -21,6 +21,7 @@ def mixed_solve(problem, element):
     noslip_boundary = problem.noslip
     inflow_boundary = problem.inflow
     u_in = problem.u_in
+    U_max = problem.U_max
     Re = problem.Re
     f = problem.f
 
@@ -38,17 +39,17 @@ def mixed_solve(problem, element):
     vq = TestFunction(M)
     v, q = split(vq)
 
-    # Current solution
-    up0 = interpolate(Constant((0, 0, 0)), M)
+    # Solution at time level t - dt
+    up0 = Function(M)
     u0, p0 = split(up0)
 
-    # Previous solution
+    #  Solution as time level t - 2dt
     up1 = Function(M)
     u1, p1 = split(up1)
 
     # Time step
     h = mesh.hmin()
-    dt = Constant(0.001)
+    dt = Constant(0.005)   # Constant(0.5*h/U_max)
     k = dt**-1
 
     # Loads
@@ -58,7 +59,7 @@ def mixed_solve(problem, element):
     u_cn = 0.5*(u + u0)
     # Form for the first time step
     F0 = k*inner(u - u0, v)*dx + inner(dot(grad(u), u0), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx + inner(p, div(v))*dx +\
+        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
         inner(q, div(u))*dx - inner(f0, v)*dx
     a0, L0 = system(F0)
 
@@ -66,14 +67,17 @@ def mixed_solve(problem, element):
     u_ab = 1.5*u0 - 0.5*u1
     f_ab = 1.5*f0 - 0.5*f1
     F = k*inner(u - u0, v)*dx + inner(dot(grad(u_cn), u_ab), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx + inner(p, div(v))*dx +\
+        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
         inner(q, div(u))*dx - inner(f_ab, v)*dx
     a, L = system(F)
+    
+    # Solution at current level t
+    uph = Function(M)
+    uh, ph = uph.split()  # Current state components
 
     # Pickard loop variables
     up_ = Function(M)
     u_, p_ = up_.split()  # Previous state components
-    u0, p0 = up0.split()  # Current state components
 
     t = 0
     T = 8
@@ -85,52 +89,54 @@ def mixed_solve(problem, element):
     while t < T:
         t += float(dt)
         step += 1
-        print 'step number:', step, 'time', t
+        print '\nstep number =', step, ', time =', t
 
         u_in.t = t
 
         # Pickard loop
         iter = 0
-        iter_max = 1
+        iter_max = 40
         tol = 1E-4
         converged = False
-        errors = []
+        e0 = None
         E = None
         while not converged and iter < iter_max:
             iter += 1
-            print '\titer number:', iter
+            print '\titer number =', iter
 
             # Remeber the old solution
-            up_.assign(up0)
+            up_.assign(uph)
 
             # Get new solution with relaxation
             if step == 1:
-                solve(a0 == L0, up0, bcs)
-                #up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
+                solve(a0 == L0, uph, bcs)
+                uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
+                up0.assign(uph)
             else:
-                solve(a0 == L0, up0, bcs)
-                #up0.vector()[:] = 0.5*(up0.vector()[:] + up_.vector()[:])
-                #up1.assign(up0)
-                #f0.assign(f1)
+                solve(a == L, uph, bcs)
+                uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
+                up1.assign(up0)
+                up0.assign(uph)
 
             # Compute the error and decide convergence
-            #e = norm(u0, 'l2')
-            #errors.append(e)
+            e = norm(uh, 'l2')
             if iter < 2:
+                e0 = e
                 converged = False
             else:
-            #    e0 = errors[-1]  # Current error
-            #    e1 = errors[-2]  # Previous error
-            #    E = abs(e1 - e0)/(e1 + e0)
-            #    converged = E < tol
-                pass
+                E = abs(e - e0)/(e + e0)
+                converged = E < tol
+                e0 = e
 
-            print '\t ', E
+            print '\t error =', E
+            
+        # TODO forces!!
+        f0.assign(f1)
 
-        #if not step % 10:
-        u_plot.assign(up0.split(True)[0])
-        plot(u_plot, title='%g' % t)
-        u_out << u_plot, t
+        if not step % 10:
+            u_plot.assign(up0.split(True)[0])
+            plot(u_plot, title='%s @ %g' % (element.name, t))
+            u_out << u_plot, t
 
     # Check global mass conservation
     n = FacetNormal(mesh)
