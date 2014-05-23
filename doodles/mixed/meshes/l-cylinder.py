@@ -42,9 +42,6 @@ plt.plot([B[0], S[0]], [B[1], S[1]])
 
 plt.plot(circle_x, circle_y)
 
-plt.axis('equal')
-plt.show()
-
 x = (B-V)/dot(B-V, B-V)
 y = (S-B)/dot(S-B, S-B)
 
@@ -52,3 +49,13 @@ print sqrt(dot(S-R, S-R))
 print sqrt(dot(A-Q, A-Q)), 4*u + 4*u*cos(pi/4)
 
 print dot(x, y), arccos(dot(x, y))*180/pi
+
+w = 4*u + 4*u*cos(pi/4)
+
+M = Q - 0.5*w*array([cos(5*pi/4), sin(5*pi/4)])
+plt.plot(M[0], M[1], 'x')
+
+plt.axis('equal')
+plt.show()
+
+
