@@ -24,6 +24,7 @@ def mixed_solve(problem, element):
     U_max = problem.U_max
     Re = problem.Re
     f = problem.f
+    T = problem.T
 
     # Create function space with element
     V, Q, M = make_function_spaces(mesh, element)
@@ -80,7 +81,6 @@ def mixed_solve(problem, element):
     u_, p_ = up_.split()  # Previous state components
 
     t = 0
-    T = 8
     step = 0
 
     u_out = XDMFFile(os.path.join(results_dir, 'u.xdmf'))
