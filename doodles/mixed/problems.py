@@ -103,7 +103,7 @@ class LCylinderFlow(object):
     # Inflow profile
     U_max = 3.5
     unit = 0.1  # Basic scaling unit for mesh definition
-    s = 2       # Arm length of the channel
+    s = 3       # Arm length of the channel, ALWAYS SYNC THIS VALUE WITH .geo
 
     class InflowProfileLCylinder(Expression):
         def __init__(self, U_max, t, unit, s):
@@ -120,8 +120,8 @@ class LCylinderFlow(object):
         def eval(self, values, x):
             U_max, width, t, M = self.U_max, self.width, self.t, self.M
             d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
-            values[0] = U_max*(width/2-d)**2**sin(pi*t/8.0)/(width/2)**2
-            values[1] = -U_max*(width/2-d)**2**sin(pi*t/8.0)/(width/2)**2
+            values[0] = U_max*(width/2-d)**2*sin(pi*t/8.0)/(width/2)**2
+            values[1] = -U_max*(width/2-d)**2*sin(pi*t/8.0)/(width/2)**2
 
         def value_shape(self):
             return (2, )
