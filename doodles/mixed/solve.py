@@ -49,7 +49,7 @@ def mixed_solve(problem, element):
 
     # Time step
     h = mesh.hmin()
-    dt = Constant(0.005)   # Constant(0.5*h/U_max)
+    dt = Constant(0.25*h/U_max)
     k = dt**-1
 
     # Loads
@@ -70,7 +70,7 @@ def mixed_solve(problem, element):
         Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
         inner(q, div(u))*dx - inner(f_ab, v)*dx
     a, L = system(F)
-    
+
     # Solution at current level t
     uph = Function(M)
     uh, ph = uph.split()  # Current state components
@@ -129,7 +129,7 @@ def mixed_solve(problem, element):
                 e0 = e
 
             print '\t error =', E
-            
+
         # TODO forces!!
         f0.assign(f1)
 
