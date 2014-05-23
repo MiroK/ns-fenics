@@ -22,7 +22,7 @@ t = s - sin(pi/4)*4*u
 A = V - t*array([-sin(5*pi/4), cos(5*pi/4)])
 B = V + t*array([-sin(7*pi/4), cos(7*pi/4)])
 
-x0, y0, r = 0, 0, 2*u
+x0, y0, r = 0, u, 2*u
 thetas = arange(0, 2*pi, 0.1)
 circle_x = x0 + r*cos(thetas)
 circle_y = y0 + r*sin(thetas)
