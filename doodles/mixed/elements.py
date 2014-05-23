@@ -50,4 +50,4 @@ def make_function_spaces(mesh, element):
     return V, Q, M
 
 # Put all to list for import
-all_elements = [TaylorHood, CrouzeixRaviart, Mini, CrDG]
+all_elements = [TaylorHood, CrouzeixRaviart, Mini]

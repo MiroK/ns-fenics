@@ -23,6 +23,7 @@ y_min, y_max = 0, 0.41          # note that cylinder is a bit off center
 c_x, c_y, r = 0.2, 0.2, 0.05
 
 
+# Convenience function for cylinder domain building in FEnicS
 def refine_cylinder(mesh):
     'Refine mesh by cutting cells around the cylinder.'
     h = mesh.hmin()
@@ -66,6 +67,65 @@ f_f = FacetFunction('size_t', mesh, 0)
 InflowBoundary().mark(f_f, 13)
 NoslipBoundary().mark(f_f, 12)
 
+# Width of the L domain
+def compute_width_L_cylinder(unit):
+    return 4*unit + 4*unit*cos(pi/4)
+
+# Width of the O domain
+def compute_width_O_cylinder(unit):
+    return 4*unit
+
+
+class InflowProfileConstant(Expression):
+    'Constant direction but pulsating magnitude.'
+    def __init__(self, U_max, t, unit, s, K, compute_width):
+        '''Unit and s characterize domain, t, K - time parameters,
+        U_max is the maximal magnitude of inflow velocity.'''
+        Expression.__init__(self)
+        self.U_max, self.t, self.K = U_max, t, K
+        # Channel width
+        self.w = compute_width(unit)
+        # Midpoint on the inflow
+        M = [4*unit*cos(5*pi/4) + s*sin(5*pi/4) - 0.5*self.w*cos(5*pi/4),
+             4*unit*sin(5*pi/4) - s*cos(5*pi/4) - 0.5*self.w*sin(5*pi/4)]
+        self.M = M
+
+    def eval(self, values, x):
+        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
+        d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
+        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
+        values[0] = mag
+        values[1] = -mag
+
+    def value_shape(self):
+        return (2, )
+
+
+class InflowProfilePeriodic(Expression):
+    'Profile with pulsating magnitide and changing direction.'
+    def __init__(self, U_max, t, unit, s, K, compute_width):
+        '''Unit and s characterize domain, t, K - time parameters,
+        U_max is the maximal magnitude of inflow velocity.'''
+        Expression.__init__(self)
+        self.U_max, self.t, self.K = U_max, t, K
+        # Channel width
+        self.w = compute_width(unit)
+        # Midpoint on the inflow
+        M = [4*unit*cos(5*pi/4) + s*sin(5*pi/4) - 0.5*self.w*cos(5*pi/4),
+             4*unit*sin(5*pi/4) - s*cos(5*pi/4) - 0.5*self.w*sin(5*pi/4)]
+        self.M = M
+
+    def eval(self, values, x):
+        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
+        d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
+        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
+        values[0] = mag*abs(sin(2*pi*t/K))
+        values[1] = -mag*abs(cos(2*pi*t/K))
+
+    def value_shape(self):
+        return (2, )
+
+# ------------------------------------------------------------------------------
 
 class CylinderFlow(object):
     'Flow past a cylinder'
@@ -86,71 +146,18 @@ class CylinderFlow(object):
     # Duration
     T = 8
 
-    Re = Constant(1000)
+    Re = Constant(100)
     U_max = 1.5
     u_in = Expression(('4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/K)/(ymax*ymax)',
                        '0.0'),
                       Um=U_max, ymax=0.41, t=0, K=T)
 
 
-class InflowProfileConstant(Expression):
-    'Constant direction but pulsating magnitude.'
-    def __init__(self, U_max, t, unit, s, K):
-        '''Unit and s characterize domain, t, K - time parameters,
-        U_max is the maximal magnitude of inflow velocity.'''
-        Expression.__init__(self)
-        self.U_max, self.t, self.K = U_max, t, K
-        # Channel width
-        w = 4*unit + 4*unit*cos(pi/4)  # Channel width
-        self.w = w
-        # Midpoint on the inflow
-        M = [4*unit*cos(5*pi/4) + s*sin(5*pi/4) - 0.5*w*cos(5*pi/4),
-             4*unit*sin(5*pi/4) - s*cos(5*pi/4) - 0.5*w*sin(5*pi/4)]
-        self.M = M
-
-    def eval(self, values, x):
-        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
-        d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
-        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
-        values[0] = mag
-        values[1] = -mag
-
-    def value_shape(self):
-        return (2, )
-
-
-class InflowProfilePeriodic(Expression):
-    # TODO make this work with ingeritance
-    'Profile with pulsating magnitide and changing direction.'
-    def __init__(self, U_max, t, unit, s, K):
-        '''Unit and s characterize domain, t, K - time parameters,
-        U_max is the maximal magnitude of inflow velocity.'''
-        Expression.__init__(self)
-        self.U_max, self.t, self.K = U_max, t, K
-        # Channel width
-        w = 4*unit + 4*unit*cos(pi/4)  # Channel width
-        self.w = w
-        # Midpoint on the inflow
-        M = [4*unit*cos(5*pi/4) + s*sin(5*pi/4) - 0.5*w*cos(5*pi/4),
-             4*unit*sin(5*pi/4) - s*cos(5*pi/4) - 0.5*w*sin(5*pi/4)]
-        self.M = M
-
-    def eval(self, values, x):
-        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
-        d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
-        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
-        values[0] = mag*abs(sin(2*pi*t/K))
-        values[1] = -mag*abs(cos(2*pi*t/K))
-
-    def value_shape(self):
-        return (2, )
-
-
-class LCylinderFlow(object):
-    'Flow past a cylinder in the bend of L(V) shaped domain'
-    name = 'l-cylinder'
+class LCylinderFlowConstant(object):
+    'Flow past a cylinder in the bend of L(V) shaped domain. Constant force.'
+    name = 'l-cylinder-constant'
     # Forcing
-    f = Constant((0., -1.))
+    f = Constant((0., 0.))
 
     # Mesh and function marking facets
     mesh = Mesh(mesh_path('l-cylinder.xml'))
@@ -168,9 +175,63 @@ class LCylinderFlow(object):
     unit = 0.1  # Basic scaling unit for mesh definition
     s = 3       # Arm length of the channel, ALWAYS SYNC THIS VALUE WITH .geo
 
-    u_in = InflowProfileConstant(U_max=U_max, t=0, unit=unit, s=s, K=T)
+    u_in = InflowProfileConstant(U_max=U_max, t=0, unit=unit, s=s, K=T,
+                                 compute_width=compute_width_L_cylinder)
 
     # Reynolds number
-    Re = Constant(500)
+    Re = Constant(100)
 
-all_problems = [CylinderFlow, LCylinderFlow]
+
+class LCylinderFlowPeriodic(LCylinderFlowConstant):
+    'Flow past a cylinder in V turn. Periodic forcing'
+    name = 'l-cylinder-periodic'
+    u_in = InflowProfilePeriodic(U_max=LCylinderFlowConstant.U_max,
+                                 t=0,
+                                 unit=LCylinderFlowConstant.unit,
+                                 s=LCylinderFlowConstant.s,
+                                 K=LCylinderFlowConstant.T,
+                                 compute_width=compute_width_L_cylinder)
+
+
+class OCylinderFlowConstant(object):
+    'Flow past a cylinder in the bend of O shaped turn. Constant force.'
+    name = 'o-cylinder-constant'
+    # Forcing
+    f = Constant((0., 0.))
+
+    # Mesh and function marking facets
+    mesh = Mesh(mesh_path('o-cylinder.xml'))
+    f_f = MeshFunction('size_t', mesh, mesh_path('o-cylinder_facet_region.xml'))
+
+    # Inflow and Noslip domains to be used for BC construction
+    inflow = [f_f, 18]
+    noslip = [f_f, 17]
+
+    # Duration
+    T = 10
+
+    # Inflow profile
+    U_max = 3.5
+    unit = 0.1  # Basic scaling unit for mesh definition
+    s = 3       # Arm length of the channel, ALWAYS SYNC THIS VALUE WITH .geo
+
+    u_in = InflowProfileConstant(U_max=U_max, t=0, unit=unit, s=s, K=T,
+                                 compute_width=compute_width_O_cylinder)
+
+    # Reynolds number
+    Re = Constant(100)
+
+
+class OCylinderFlowPeriodic(OCylinderFlowConstant):
+    'Flow past a cylinder in the bend of O shaped turn. Periodic force.'
+    name = 'o-cylinder-periodic'
+    u_in = InflowProfilePeriodic(U_max=LCylinderFlowConstant.U_max,
+                                 t=0,
+                                 unit=LCylinderFlowConstant.unit,
+                                 s=LCylinderFlowConstant.s,
+                                 K=LCylinderFlowConstant.T,
+                                 compute_width=compute_width_O_cylinder)
+
+all_problems = [CylinderFlow,
+                LCylinderFlowConstant, LCylinderFlowPeriodic,
+                OCylinderFlowConstant, OCylinderFlowPeriodic]
