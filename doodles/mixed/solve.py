@@ -5,7 +5,6 @@ import os
 
 set_log_level(WARNING)
 
-
 def mixed_solve(problem, element):
     'Mixed solver.'
     print 'Solving %s problem with %s element' % (problem.name, element.name)
@@ -109,11 +108,13 @@ def mixed_solve(problem, element):
 
             # Get new solution with relaxation
             if step == 1:
-                solve(a0 == L0, uph, bcs)
+                solve(a0 == L0, uph, bcs,
+                      solver_parameters={'linear_solver': 'mumps'})
                 uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
                 up0.assign(uph)
             else:
-                solve(a == L, uph, bcs)
+                solve(a == L, uph, bcs,
+                      solver_parameters={'linear_solver': 'mumps'})
                 uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
                 up1.assign(up0)
                 up0.assign(uph)
@@ -161,23 +162,8 @@ def mixed_solve(problem, element):
 
 if __name__ == '__main__':
 
-    print 'Problems:', [(i, problem) for i, problem in enumerate(all_problems)]
-    print 'Elements', [(i, element) for i, element in enumerate(all_elements)]
-
-    i_problem = int(raw_input('Select problem: '))
-    i_element = int(raw_input('Select element: '))
-
-    # import sys
-    # assert len(sys.argv) == 3
-    # i_problem = sys.argv[1]
-    # i_element = sys.argv[2]
-
-    if (-1 < i_problem < len(all_problems)) and\
-            (-1 < i_element < len(all_elements)):
-        problem = all_problems[i_problem]
-        element = all_elements[i_element]
-        result = mixed_solve(problem, element)
-        with open('data.txt', 'a') as f:
-            f.write('%s\n' % result)
-    else:
-        exit()
+    for element in all_elements:
+        for problem in all_problems:
+            result = mixed_solve(problem, element)
+            with open('data.txt', 'a') as f:
+                f.write('%s\n' % result)
