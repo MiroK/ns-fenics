@@ -83,7 +83,7 @@ def mixed_solve(problem, element):
     t = 0
     step = 0
 
-    u_out = XDMFFile(os.path.join(results_dir, 'u.xdmf'))
+    u_out = XDMFFile(os.path.join(results_dir, 'u_%d.xdmf' % float(Re)))
     u_out.parameters['rewrite_function_mesh'] = False
     u_plot = Function(V)
     while t < T:

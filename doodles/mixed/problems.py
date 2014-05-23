@@ -88,18 +88,18 @@ class CylinderFlow(object):
 
     Re = Constant(1000)
     U_max = 1.5
-    u_in = Expression(('4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/T)/(ymax*ymax)',
+    u_in = Expression(('4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/K)/(ymax*ymax)',
                        '0.0'),
-                      Um=U_max, ymax=0.41, t=0, T=T)
+                      Um=U_max, ymax=0.41, t=0, K=T)
 
 
 class InflowProfileConstant(Expression):
     'Constant direction but pulsating magnitude.'
-    def __init__(self, U_max, t, unit, s, T):
-        '''Unit and s characterize domain, t, T - time parameters,
+    def __init__(self, U_max, t, unit, s, K):
+        '''Unit and s characterize domain, t, K - time parameters,
         U_max is the maximal magnitude of inflow velocity.'''
         Expression.__init__(self)
-        self.U_max, self.t, self.T = U_max, t, T
+        self.U_max, self.t, self.K = U_max, t, K
         # Channel width
         w = 4*unit + 4*unit*cos(pi/4)  # Channel width
         self.w = w
@@ -109,9 +109,9 @@ class InflowProfileConstant(Expression):
         self.M = M
 
     def eval(self, values, x):
-        U_max, w, t, M, T = self.U_max, self.w, self.t, self.M, self.T
+        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
         d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
-        mag = U_max*(w/2-d)**2*sin(pi*t/T)/(w/2)**2/sqrt(2)
+        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
         values[0] = mag
         values[1] = -mag
 
@@ -119,14 +119,31 @@ class InflowProfileConstant(Expression):
         return (2, )
 
 
-class InflowProfilePeriodic(InflowProfileConstant):
+class InflowProfilePeriodic(Expression):
+    # TODO make this work with ingeritance
     'Profile with pulsating magnitide and changing direction.'
+    def __init__(self, U_max, t, unit, s, K):
+        '''Unit and s characterize domain, t, K - time parameters,
+        U_max is the maximal magnitude of inflow velocity.'''
+        Expression.__init__(self)
+        self.U_max, self.t, self.K = U_max, t, K
+        # Channel width
+        w = 4*unit + 4*unit*cos(pi/4)  # Channel width
+        self.w = w
+        # Midpoint on the inflow
+        M = [4*unit*cos(5*pi/4) + s*sin(5*pi/4) - 0.5*w*cos(5*pi/4),
+             4*unit*sin(5*pi/4) - s*cos(5*pi/4) - 0.5*w*sin(5*pi/4)]
+        self.M = M
+
     def eval(self, values, x):
-        U_max, w, t, M, T = self.U_max, self.w, self.t, self.M, self.T
+        U_max, w, t, M, K = self.U_max, self.w, self.t, self.M, self.K
         d = sqrt((x[0] - M[0])**2 + (x[1] - M[1])**2)
-        mag = U_max*(w/2-d)**2*sin(pi*t/T)/(w/2)**2/sqrt(2)
-        values[0] = mag*abs(sin(2*pi*t/T))
-        values[1] = -mag*abs(cos(2*pi*t/T))
+        mag = U_max*(w/2-d)**2*sin(pi*t/K)/(w/2)**2/sqrt(2)
+        values[0] = mag*abs(sin(2*pi*t/K))
+        values[1] = -mag*abs(cos(2*pi*t/K))
+
+    def value_shape(self):
+        return (2, )
 
 
 class LCylinderFlow(object):
@@ -151,9 +168,9 @@ class LCylinderFlow(object):
     unit = 0.1  # Basic scaling unit for mesh definition
     s = 3       # Arm length of the channel, ALWAYS SYNC THIS VALUE WITH .geo
 
-    u_in = InflowProfileConstant(U_max=U_max, t=0, unit=unit, s=s, T=T)
+    u_in = InflowProfileConstant(U_max=U_max, t=0, unit=unit, s=s, K=T)
 
     # Reynolds number
-    Re = Constant(10)
+    Re = Constant(500)
 
 all_problems = [CylinderFlow, LCylinderFlow]
