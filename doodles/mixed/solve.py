@@ -136,7 +136,7 @@ def mixed_solve(problem, element):
 
         if not step % 10:
             u_plot.assign(up0.split(True)[0])
-            plot(u_plot, title='%s @ %g' % (element.name, t))
+            # plot(u_plot, title='%s @ %g' % (element.name, t))
             u_out << u_plot, t
 
     # Check global mass conservation
