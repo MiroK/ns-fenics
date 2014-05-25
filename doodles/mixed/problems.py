@@ -134,13 +134,13 @@ class CylinderFlow(object):
     'Flow past a cylinder'
     name = 'cylinder'
     # Forcing
-    f = Constant((0., 0.))
+    f = Constant((0., 0., 0.))# versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = mesh
-    # mesh = Mesh(mesh_path('cylinder.xml'))
+    # mesh = Mesh(mesh_path('cylinder.xdmf'))
     f_f = f_f
-    # f_f =MeshFunction('size_t', mesh, mesh_path('cylinder_facet_region.xml'))
+    # f_f =MeshFunction('size_t', mesh, mesh_path('cylinder_facet_region.xdmf'))
 
     # Inflow and Noslip domains to be used for BC construction
     inflow = [f_f, 13]
@@ -160,11 +160,11 @@ class LCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of L(V) shaped domain. Constant force.'
     name = 'l-cylinder-constant'
     # Forcing
-    f = Constant((0., 0.))
+    f = Constant((0., 0., 0.))# versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
-    mesh = Mesh(mesh_path('l-cylinder.xml'))
-    f_f = MeshFunction('size_t', mesh, mesh_path('l-cylinder_facet_region.xml'))
+    mesh = Mesh(mesh_path('l-cylinder.xdmf'))
+    f_f = MeshFunction('size_t', mesh, mesh_path('l-cylinder_facet_region.xdmf'))
 
     # Inflow and Noslip domains to be used for BC construction
     inflow = [f_f, 17]
@@ -200,11 +200,11 @@ class OCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of O shaped turn. Constant force.'
     name = 'o-cylinder-constant'
     # Forcing
-    f = Constant((0., 0.))
+    f = Constant((0., 0., 0.)) # versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
-    mesh = Mesh(mesh_path('o-cylinder.xml'))
-    f_f = MeshFunction('size_t', mesh, mesh_path('o-cylinder_facet_region.xml'))
+    mesh = Mesh(mesh_path('o-cylinder.xdmf'))
+    f_f = MeshFunction('size_t', mesh, mesh_path('o-cylinder_facet_region.xdmf'))
 
     # Inflow and Noslip domains to be used for BC construction
     inflow = [f_f, 18]

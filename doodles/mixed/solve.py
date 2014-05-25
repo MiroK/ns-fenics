@@ -44,48 +44,50 @@ def mixed_solve(problem, element):
     up0 = Function(M)
     u0, p0 = split(up0)
 
-    #  Solution as time level t - 2dt
-    up1 = Function(M)
-    u1, p1 = split(up1)
-
     # Time step
     h = mesh.hmin()
     dt = Constant(0.25*h/U_max)
     k = dt**-1
 
     # Loads
-    f0 = interpolate(f, V)
-    f1 = interpolate(f, V)
+    f0 = interpolate(f, M)
+    F0 = f0.vector()
 
-    u_cn = 0.5*(u + u0)
-    # Form for the first time step
-    F0 = k*inner(u - u0, v)*dx + inner(dot(grad(u), u0), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
-        inner(q, div(u))*dx - inner(f0, v)*dx
-    a0, L0 = system(F0)
+    # Forms for assembling matrices on lhs
+    w = inner(u, v)*dx                     # mass matrix form
+    n0 = inner(dot(grad(u), u0), v)*dx     # nonlinearity
+    s = Constant(0.5)*Re**-1*inner(grad(u), grad(v))*dx # ~stiffness matrix form
+    bt = -inner(p, div(v))*dx              # divergence form
+    b = -inner(q, div(u))*dx               # gradient form
+    A = assemble(k*w + s + bt + b)         # part of lhs matrix which stays constant
 
-    # Form for other time steps
-    u_ab = 1.5*u0 - 0.5*u1
-    f_ab = 1.5*f0 - 0.5*f1
-    F = k*inner(u - u0, v)*dx + inner(dot(grad(u_cn), u_ab), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
-        inner(q, div(u))*dx - inner(f_ab, v)*dx
-    a, L = system(F)
+    # Forms for assembling matrices/vector on rhs
+    L = inner(Constant((0., 0.,)), v)*dx   # place holder
+    W = assemble(w)                        # mass matrix
+    K = assemble(k*w - s) # part of rhs matrix which stays constant
+    b_ = assemble(L)                       # auxiliary vector
+    b = Vector(b_)                         # rhs vector
 
     # Solution at current level t
     uph = Function(M)
     uh, ph = uph.split()  # Current state components
+    UPH = uph.vector()
 
     # Pickard loop variables
     up_ = Function(M)
     u_, p_ = up_.split()  # Previous state components
 
-    t = 0
-    step = 0
-
+    # Prepare output
     u_out = XDMFFile(os.path.join(results_dir, 'u_%d.xdmf' % float(Re)))
     u_out.parameters['rewrite_function_mesh'] = False
     u_plot = Function(V)
+
+    # Create solver
+    solver = LUSolver('mumps')
+    solver.parameters['same_nonzero_pattern'] = True  # FIXME, advantage?
+
+    t = 0
+    step = 0
     while t < T:
         t += float(dt)
         step += 1
@@ -101,22 +103,35 @@ def mixed_solve(problem, element):
         e0 = None
         E = None
         while not converged and iter < iter_max:
+            UP0 = up0.vector()
+
             iter += 1
             print '\titer number =', iter
 
             # Remeber the old solution
             up_.assign(uph)
+            UP_ = up_.vector()
+
+            # Assemble the t-dep part of lhs matrix and
+            # add to A to it yielding comple lhs matrix N0
+            N0 = assemble(n0)
+            N0.axpy(1, A, False)
+
+            # Put together the rhs vector b
+            W.mult(F0, b_)
+            K.mult(UP0, b)
+            b.axpy(1, b_)
+
+            # Apply boundary conditions
+            [bc.apply(N0, b) for bc in bcs]
 
             # Get new solution with relaxation
-            #if step == 1:
-            solve(a0 == L0, uph, bcs)
-            uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
+            solve(N0, UPH, b)
+            UPH *= 0.5
+            UPH.axpy(0.5, UP_)
+            print uph.vector().norm('l2')
+
             up0.assign(uph)
-            #else:
-            #    solve(a == L, uph, bcs)
-            #    uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
-            #    up1.assign(up0)
-            #    up0.assign(uph)
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')
@@ -130,8 +145,7 @@ def mixed_solve(problem, element):
 
             print '\t error =', E
 
-        # TODO forces!!
-        f0.assign(f1)
+        # TODO handle transient forces!!
 
         if not step % 10:
             u_plot.assign(up0.split(True)[0])
