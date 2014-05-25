@@ -108,15 +108,15 @@ def mixed_solve(problem, element):
             up_.assign(uph)
 
             # Get new solution with relaxation
-            if step == 1:
-                solve(a0 == L0, uph, bcs)
-                uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
-                up0.assign(uph)
-            else:
-                solve(a == L, uph, bcs)
-                uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
-                up1.assign(up0)
-                up0.assign(uph)
+            #if step == 1:
+            solve(a0 == L0, uph, bcs)
+            uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
+            up0.assign(uph)
+            #else:
+            #    solve(a == L, uph, bcs)
+            #    uph.vector()[:] = 0.5*(uph.vector()[:] + up_.vector()[:])
+            #    up1.assign(up0)
+            #    up0.assign(uph)
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')
