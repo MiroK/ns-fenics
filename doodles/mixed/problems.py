@@ -2,7 +2,7 @@
 
 from dolfin import Constant, Mesh, Expression, MeshFunction, SubDomain,\
     Rectangle, Circle, Point, CellFunction, cells, refine,\
-    FacetFunction, near
+    FacetFunction, near, plot
 from math import pi, cos, sin, sqrt
 import os
 
@@ -134,7 +134,8 @@ class CylinderFlow(object):
     'Flow past a cylinder'
     name = 'cylinder'
     # Forcing
-    f = Constant((0., 0., 0.))# versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
+    f = Constant((0., 0., 0.))
+    # versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = mesh
@@ -160,7 +161,8 @@ class LCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of L(V) shaped domain. Constant force.'
     name = 'l-cylinder-constant'
     # Forcing
-    f = Constant((0., 0., 0.))# versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
+    f = Constant((0., 0., 0.))
+    # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = Mesh(mesh_path('l-cylinder.xdmf'))
@@ -200,7 +202,8 @@ class OCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of O shaped turn. Constant force.'
     name = 'o-cylinder-constant'
     # Forcing
-    f = Constant((0., 0., 0.)) # versus (0, 0) gives 11:41 vs 10:56, TODO worth it?
+    f = Constant((0., 0., 0.))
+    # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = Mesh(mesh_path('o-cylinder.xdmf'))
@@ -238,3 +241,8 @@ class OCylinderFlowPeriodic(OCylinderFlowConstant):
 all_problems = [CylinderFlow,
                 LCylinderFlowConstant, LCylinderFlowPeriodic,
                 OCylinderFlowConstant, OCylinderFlowPeriodic]
+
+if __name__ == '__main__':
+    for problem in all_problems:
+        plot(problem.mesh)
+        plot(problem.f_f, interactive=True)

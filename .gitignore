@@ -4,5 +4,7 @@ results
 .swp
 *.xml
 *.msh
+*.h5
+*.xdmf
 data.txt
 

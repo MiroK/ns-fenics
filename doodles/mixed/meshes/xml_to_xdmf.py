@@ -3,34 +3,37 @@
 from dolfin import Mesh, MeshFunction, File
 import os
 
-def is_mesh_file(file):
+
+def is_xml_mesh_file(file):
+    'Check if file is .xml that could be mesh.'
     name, ext = os.path.splitext(file)
-    if 'facet_region' not in name or\
-
-
-
-for f in os.listdir('.'):
-    name, ext = os.path.splitext(f)
     if ext == '.xml':
-        new_name = ''.join([name, '.xdmf'])
+        if not('facet_region' in name or 'physical_region' in name):
+            return True
+    return False
 
-        # Convert facet function
-        if 'facet' in name:
-            print 'Converting {0} to {1}'.format(f, new_name)
 
-            # Look for the mesh file to create mesh
-            i = f.find('facet')
-            mesh_file_name = ''.join([name[:(i-1)], '.xml'])
-            mesh = Mesh(mesh_file_name)
-            File(new_name) << MeshFunction('size_t', mesh, f)
+def get_facet_xml(mesh_xml):
+    'Get a name of facet region file of given xml mehs file.'
+    assert is_xml_mesh_file(mesh_xml), 'Not a .xml file for mesh!'
 
-            # Test
-            foo = MeshFunction('size_t', mesh, new_name)
-        # Convert mesh
-        elif 'physical' not in name:
-            print 'Converting {0} to {1}'.format(f, new_name)
+    name, xml_ext = os.path.splitext(mesh_xml)
+    return ''.join([name, '_facet_region', xml_ext])
 
-            File(new_name) << mesh
+mesh_files = filter(is_xml_mesh_file, os.listdir('.'))
+facet_files = map(get_facet_xml, mesh_files)
 
-            # Test
-            bar = Mesh(new_name)
+for mesh_file, facet_file in zip(mesh_files, facet_files):
+    print 'Converting', mesh_file, facet_file
+    # Convert from xml to xdmf
+    mesh = Mesh(mesh_file)
+    new_mesh_file = ''.join([os.path.splitext(mesh_file)[0], '.xdmf'])
+    f_f = MeshFunction('size_t', mesh, facet_file)
+    new_facet_file = ''.join([os.path.splitext(facet_file)[0], '.xdmf'])
+    print new_mesh_file, new_facet_file
+    File(new_mesh_file) << mesh
+    File(new_facet_file) << f_f
+
+    # Test
+    mesh = Mesh(new_mesh_file)
+    f_f = MeshFunction('size_t', mesh, new_facet_file)

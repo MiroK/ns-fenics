@@ -54,17 +54,17 @@ def mixed_solve(problem, element):
     F0 = f0.vector()
 
     # Forms for assembling matrices on lhs
-    w = inner(u, v)*dx                     # mass matrix form
-    n0 = inner(dot(grad(u), u0), v)*dx     # nonlinearity
-    s = Constant(0.5)*Re**-1*inner(grad(u), grad(v))*dx # ~stiffness matrix form
-    bt = -inner(p, div(v))*dx              # divergence form
-    b = -inner(q, div(u))*dx               # gradient form
-    A = assemble(k*w + s + bt + b)         # part of lhs matrix which stays constant
+    w = inner(u, v)*dx               # mass matrix form
+    n0 = inner(dot(grad(u), u0), v)*dx  # nonlinearity
+    s = Constant(0.5)*Re**-1*inner(grad(u), grad(v))*dx  # ~stiffness m. form
+    bt = -inner(p, div(v))*dx        # divergence form
+    b = -inner(q, div(u))*dx         # gradient form
+    A = assemble(k*w + s + bt + b)   # part of lhs matrix which stays constant
 
     # Forms for assembling matrices/vector on rhs
     L = inner(Constant((0., 0.,)), v)*dx   # place holder
     W = assemble(w)                        # mass matrix
-    K = assemble(k*w - s) # part of rhs matrix which stays constant
+    K = assemble(k*w - s)  # part of rhs matrix which stays constant
     b_ = assemble(L)                       # auxiliary vector
     b = Vector(b_)                         # rhs vector
 
