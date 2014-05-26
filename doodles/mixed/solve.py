@@ -11,7 +11,7 @@ def mixed_solve(problem, element):
     print 'Solving %s problem with %s element' % (problem.name, element.name)
 
     # Make directory for results
-    results_root = 'results'
+    results_root = 'results/foo'
     results_dir = os.path.join(results_root, element.name, problem.name)
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
@@ -42,7 +42,13 @@ def mixed_solve(problem, element):
 
     # Solution at time level t - dt
     up0 = Function(M)
+    UP0 = up0.vector()
     u0, p0 = split(up0)
+
+    # Solution as time level t - 2dt
+    up1 = Function(M)
+    UP1 = up1.vector()
+    u1, p1 = split(up1)
 
     # Time step
     h = mesh.hmin()
@@ -51,11 +57,15 @@ def mixed_solve(problem, element):
 
     # Loads
     f0 = interpolate(f, M)
+    f1 = interpolate(f, M)
     F0 = f0.vector()
+    F1 = f1.vector()
 
     # Forms for assembling matrices on lhs
+    u_ab = 1.5*u0 - 0.5*u1
     w = inner(u, v)*dx               # mass matrix form
-    n0 = inner(dot(grad(u), u0), v)*dx  # nonlinearity
+    n0 = inner(dot(grad(u), u0), v)*dx  # nonlinearity in 1st step
+    n1 = Constant(0.5)*inner(dot(grad(u), u_ab), v)*dx  # nonlin. in 2nd step
     s = Constant(0.5)*Re**-1*inner(grad(u), grad(v))*dx  # ~stiffness m. form
     bt = -inner(p, div(v))*dx        # divergence form
     b = -inner(q, div(u))*dx         # gradient form
@@ -65,16 +75,18 @@ def mixed_solve(problem, element):
     L = inner(Constant((0., 0.,)), v)*dx   # place holder
     W = assemble(w)                        # mass matrix
     K = assemble(k*w - s)  # part of rhs matrix which stays constant
-    b_ = assemble(L)                       # auxiliary vector
-    b = Vector(b_)                         # rhs vector
+    b_0 = assemble(L)                       # auxiliary vector
+    b_1 = Vector(b_0)                       # auxiliary vector
+    b = Vector(b_0)                         # rhs vector
 
     # Solution at current level t
     uph = Function(M)
-    uh, ph = uph.split()  # Current state components
     UPH = uph.vector()
+    uh, ph = uph.split()  # Current state components
 
     # Pickard loop variables
     up_ = Function(M)
+    UP_ = up_.vector()
     u_, p_ = up_.split()  # Previous state components
 
     # Prepare output
@@ -103,35 +115,70 @@ def mixed_solve(problem, element):
         e0 = None
         E = None
         while not converged and iter < iter_max:
-            UP0 = up0.vector()
 
             iter += 1
             print '\titer number =', iter
 
             # Remeber the old solution
-            up_.assign(uph)
-            UP_ = up_.vector()
+            UP_.zero()
+            UP_.axpy(1, UPH)
 
-            # Assemble the t-dep part of lhs matrix and
-            # add to A to it yielding comple lhs matrix N0
-            N0 = assemble(n0)
-            N0.axpy(1, A, False)
+            if step == 1:
+                # Assemble the t-dep part of lhs matrix and
+                # add to A to it yielding comple lhs matrix N0
+                N0 = assemble(n0)
+                N0.axpy(1, A, False)
 
-            # Put together the rhs vector b
-            W.mult(F0, b_)
-            K.mult(UP0, b)
-            b.axpy(1, b_)
+                # Put together the rhs vector b
+                W.mult(F0, b_0)
+                K.mult(UP0, b)
+                b.axpy(1, b_0)
 
-            # Apply boundary conditions
-            [bc.apply(N0, b) for bc in bcs]
+                # Apply boundary conditions
+                [bc.apply(N0, b) for bc in bcs]
 
-            # Get new solution with relaxation
-            solve(N0, UPH, b)
-            UPH *= 0.5
-            UPH.axpy(0.5, UP_)
-            print uph.vector().norm('l2')
+                # Get new solution with relaxation
+                solve(N0, UPH, b)
+                UPH *= 0.5
+                UPH.axpy(0.5, UP_)
+                print UPH.norm('l2')
 
-            up0.assign(uph)
+                # Assign UPH to UP0
+                UP0.zero()
+                UP0.axpy(1, UPH)
+            else:
+                # Assemble the t-dep part of lhs matrix and
+                # add to A to it yielding comple lhs matrix N0
+                N1 = assemble(n1)
+                N1.axpy(1, A, False)
+
+                # Put together the rhs vector b
+                W.mult(F0, b_0)
+                b_0 *= 1.5
+                W.mult(F1, b_1)
+                b_0.axpy(-0.5, b_1)  # b_0 = W*(1.5*F0 - 0.5*F1)
+
+                N1.mult(UP0, b_1)    # b_1 = N1*UP0
+
+                K.mult(UP0, b)       # b = K*UP0
+                b.axpy(1, b_0)       # b = K*UP0 + W*(1.5*F0 - 0.5*F1)
+                b.axpy(-1, b_1)      # b = K*UP0 + W*(1.5*F0 - 0.5*F1) - N1*UP0
+
+                # Apply boundary conditions
+                [bc.apply(N1, b) for bc in bcs]
+
+                # Get new solution with relaxation
+                solve(N1, UPH, b)
+                UPH *= 0.5
+                UPH.axpy(0.5, UP_)
+                print UPH.norm('l2')
+
+                # Assign UP0 to UP1, UPH to UP0
+                UP1.zero()
+                UP1.axpy(1, UP0)
+
+                UP0.zero()
+                UP0.axpy(1, UPH)
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')

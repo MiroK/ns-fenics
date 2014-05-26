@@ -56,6 +56,11 @@ class InflowBoundary(SubDomain):
         return on_boundary and near(x[0], x_min)
 
 
+class OutflowBoundary(SubDomain):
+    def inside(self, x, on_boundary):
+        return on_boundary and near(x[0], x_max)
+
+
 class NoslipBoundary(SubDomain):
     def inside(self, x, on_boundary):
         dx = x[0] - c_x
@@ -66,6 +71,7 @@ class NoslipBoundary(SubDomain):
 f_f = FacetFunction('size_t', mesh, 0)
 InflowBoundary().mark(f_f, 13)
 NoslipBoundary().mark(f_f, 12)
+OutflowBoundary().mark(f_f, 15)
 
 
 # Width of the L domain
@@ -83,7 +89,6 @@ class InflowProfileConstant(Expression):
     def __init__(self, U_max, t, unit, s, K, compute_width):
         '''Unit and s characterize domain, t, K - time parameters,
         U_max is the maximal magnitude of inflow velocity.'''
-        Expression.__init__(self)
         self.U_max, self.t, self.K = U_max, t, K
         # Channel width
         self.w = compute_width(unit)
@@ -108,7 +113,6 @@ class InflowProfilePeriodic(Expression):
     def __init__(self, U_max, t, unit, s, K, compute_width):
         '''Unit and s characterize domain, t, K - time parameters,
         U_max is the maximal magnitude of inflow velocity.'''
-        Expression.__init__(self)
         self.U_max, self.t, self.K = U_max, t, K
         # Channel width
         self.w = compute_width(unit)
