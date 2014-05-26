@@ -1,30 +1,49 @@
 from dolfin import *
-from numpy import random
 
 mesh = UnitIntervalMesh(5)
 V = FunctionSpace(mesh, 'DG', 0)
-V = FunctionSpace(mesh, 'DG', 0)
-V = MixedFunctionSpace([V, V])
 
-u = Function(V)
-U = u.vector()
+f = Expression('i', i=0)
 
-for i in range(10):
-    x = random.random(V.dim())
-    u.vector()[:] = x
+def foo():
+    u = Function(V)
+    U = u.vector()
 
-    print id(u.vector()), id(U)
+    for i in range(3):
+        f.i = i
+        ut = interpolate(f, V)
+        u.assign(ut)
 
-    print u.vector().array()
-    print U.array()
-    print
+        print u.vector().norm('l2')
+        print ut.vector().norm('l2')
+        print U.norm('l2')
+        print
 
-    x = random.random(V.dim())
-    U[:] = x
-    print u.vector().array()
-    print U.array()
-    print
-    print
+def bar():
+    u = Function(V)
+    U = u.vector()
+
+    for i in range(3):
+        f.i = i
+        ut = interpolate(f, V)
+        U.zero()
+        U.axpy(1, ut.vector())
+
+        print u.vector().norm('l2')
+        print ut.vector().norm('l2')
+        print U.norm('l2')
+        print
+
+foo()
+bar()
+
+
+
+
+
+
+
+
 
 
 
