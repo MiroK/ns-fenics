@@ -42,3 +42,4 @@ Plane Surface(14) = {12, 13};
 Physical Surface(15) = {14};
 Physical Line(16) = {5, 11, 8, 2, 3, 4, 1, 7, 6};
 Physical Line(17) = {10};
+Physical Line(18) = {9};
