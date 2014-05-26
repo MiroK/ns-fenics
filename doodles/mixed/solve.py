@@ -17,8 +17,9 @@ set_log_level(WARNING)
 
 
 def mixed_solve(problem, element):
-    'Mixed solver.'
-    p_print('Solving %s problem with %s element' % (problem.name, element.name))
+    'Mixed solver'
+    p_print('Solving %s problem with %s element' % (problem.name,
+                                                    element.name))
     timer = Timer('Mixed solver')
     timer.start()
 
@@ -86,11 +87,11 @@ def mixed_solve(problem, element):
     # Forms for assembling rhs
     f_ab = 1.5*f0 - 0.5*f1
 
-    L0 = inner(f0, v)*dx
-    L1 = inner(f_ab, v)*dx
-    K = assemble(k*w - s)
+    L0 = inner(f0, v)*dx     # Both L0, L1 can be obtained as matrix vector
+    L1 = inner(f_ab, v)*dx   # product, TODO
+    K = assemble(k*w - s)    # K*U0 is part of rhs vector
 
-    # Aux form to get consisten b0, b1 vectors
+    # Auxiliary form to get consistent b0, b1 vectors
     L = inner(Constant((0, 0)), v)*dx
     b0 = assemble(L)
     b1 = assemble(L)
@@ -112,7 +113,7 @@ def mixed_solve(problem, element):
 
     # Create solver
     solver = LUSolver('mumps')
-    solver.parameters['same_nonzero_pattern'] = True  # FIXME, advantage?
+    solver.parameters['same_nonzero_pattern'] = True
 
     t = 0
     step = 0
@@ -146,8 +147,10 @@ def mixed_solve(problem, element):
                 N0.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                assemble(L0, tensor=b0) # b0 =inner(f0, v)*dx
-                K.mult(UP0, b1)         # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                # b0 =inner(f0, v)*dx
+                assemble(L0, tensor=b0)
+                # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                K.mult(UP0, b1)
                 b0.axpy(1, b1)
 
                 # Apply boundary conditions
@@ -163,16 +166,19 @@ def mixed_solve(problem, element):
                 UP0.axpy(1, UPH)
             else:
                 # Assemble the t-dep part of lhs matrix and
-                # add to A to it yielding comple lhs matrix N0
                 N1 = assemble(n1)
-                N1.mult(UP0, b1)        # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
-
+                # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
+                N1.mult(UP0, b1)
+                # Add to A to N1 it yielding comple lhs matrix N0
                 N1.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                assemble(L1, tensor=b0) # b0 = inner(f_ab, v)*dx
-                b0.axpy(-1, b1)         # b0 = b0 - b1
-                K.mult(UP0, b1)  # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                # b0 = inner(f_ab, v)*dx
+                assemble(L1, tensor=b0)
+                # b0 = b0 - b1
+                b0.axpy(-1, b1)
+                # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                K.mult(UP0, b1)
                 b1.axpy(1, b0)
 
                 # Apply boundary conditions
@@ -187,6 +193,7 @@ def mixed_solve(problem, element):
                 UP1.zero()
                 UP1.axpy(1, UP0)
 
+                # Assign UPH to UP0
                 UP0.zero()
                 UP0.axpy(1, UPH)
 
@@ -238,29 +245,28 @@ def mixed_solve(problem, element):
          time, comm.Get_size())
 
 if __name__ == '__main__':
-
     p_print('Problems:')
     p_print([(i, problem) for i, problem in enumerate(all_problems)])
     p_print('Elements')
     p_print([(i, element) for i, element in enumerate(all_elements)])
 
+    # Use input obtained problem/element on rank 0 = master
     if rank == 0:
         i_problem = int(raw_input('Select problem: '))
         i_element = int(raw_input('Select element: '))
+
+        assert -1 < i_problem < len(all_problems), 'Invalid problem.'
+        assert -1 < i_element < len(all_elements), 'Invalied element.'
     else:
         i_problem, i_element = None, None
-
+    # Broadcast to slaves
     i_problem = comm.bcast(i_problem, root=0)
     i_element = comm.bcast(i_element, root=0)
 
-    if (-1 < i_problem < len(all_problems)) and\
-            (-1 < i_element < len(all_elements)):
-        problem = all_problems[i_problem]
-        element = all_elements[i_element]
-        result = mixed_solve(problem, element)
+    problem = all_problems[i_problem]
+    element = all_elements[i_element]
+    result = mixed_solve(problem, element)
 
-        if rank == 0:
-            with open('data.txt', 'a') as f:
-                f.write('%s\n' % result)
-    else:
-        exit()
+    if rank == 0:
+        with open('data.txt', 'a') as f:
+            f.write('%s\n' % result)

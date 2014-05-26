@@ -5,6 +5,7 @@ V = FunctionSpace(mesh, 'DG', 0)
 
 f = Expression('i', i=0)
 
+
 def foo():
     u = Function(V)
     U = u.vector()
@@ -18,6 +19,7 @@ def foo():
         print ut.vector().norm('l2')
         print U.norm('l2')
         print
+
 
 def bar():
     u = Function(V)
@@ -36,16 +38,3 @@ def bar():
 
 foo()
 bar()
-
-
-
-
-
-
-
-
-
-
-
-
-

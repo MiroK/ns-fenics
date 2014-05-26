@@ -4,6 +4,7 @@ import mpi4py.MPI as mpi
 comm = mpi.COMM_WORLD
 rank = comm.Get_rank()
 
+
 def pprint(arg):
     if rank == 0:
         print arg
