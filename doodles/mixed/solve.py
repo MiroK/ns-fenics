@@ -56,13 +56,12 @@ def mixed_solve(problem, element):
     k = dt**-1
 
     # Loads
-    f0 = interpolate(f, M)
-    f1 = interpolate(f, M)
-    F0 = f0.vector()
-    F1 = f1.vector()
+    f0 = interpolate(f, V)
+    f1 = interpolate(f, V)
 
-    # Forms for assembling matrices on lhs
+    # Forms for assembling lhs
     u_ab = 1.5*u0 - 0.5*u1
+
     w = inner(u, v)*dx               # mass matrix form
     n0 = inner(dot(grad(u), u0), v)*dx  # nonlinearity in 1st step
     n1 = Constant(0.5)*inner(dot(grad(u), u_ab), v)*dx  # nonlin. in 2nd step
@@ -71,13 +70,19 @@ def mixed_solve(problem, element):
     b = -inner(q, div(u))*dx         # gradient form
     A = assemble(k*w + s + bt + b)   # part of lhs matrix which stays constant
 
-    # Forms for assembling matrices/vector on rhs
-    L = inner(Constant((0., 0.,)), v)*dx   # place holder
-    W = assemble(w)                        # mass matrix
-    K = assemble(k*w - s)  # part of rhs matrix which stays constant
-    b_0 = assemble(L)                       # auxiliary vector
-    b_1 = Vector(b_0)                       # auxiliary vector
-    b = Vector(b_0)                         # rhs vector
+    # Forms for assembling rhs
+    f_ab = 1.5*f0 - 0.5*f1
+
+    L0 = k*inner(u0, v)*dx - Constant(0.5)*Re**-1*inner(grad(u0), grad(v))*dx +\
+        inner(f0, v)*dx
+
+    L1 = k*inner(u0, v)*dx - Constant(0.5)*Re**-1*inner(grad(u0), grad(v))*dx +\
+        inner(f_ab, v)*dx - Constant(0.5)*inner(dot(grad(u0), u_ab), v)*dx
+
+    # Aux form to get consisten b0, b1 vectors
+    L = inner(Constant((0, 0)), v)*dx
+    b0 = assemble(L)
+    b1 = assemble(L)
 
     # Solution at current level t
     uph = Function(M)
@@ -123,22 +128,20 @@ def mixed_solve(problem, element):
             UP_.zero()
             UP_.axpy(1, UPH)
 
-            if step == 1:
+            if step == 0:
                 # Assemble the t-dep part of lhs matrix and
                 # add to A to it yielding comple lhs matrix N0
                 N0 = assemble(n0)
                 N0.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                W.mult(F0, b_0)
-                K.mult(UP0, b)
-                b.axpy(1, b_0)
+                assemble(L0, tensor=b0)
 
                 # Apply boundary conditions
-                [bc.apply(N0, b) for bc in bcs]
+                [bc.apply(N0, b0) for bc in bcs]
 
                 # Get new solution with relaxation
-                solve(N0, UPH, b)
+                solve(N0, UPH, b0)
                 UPH *= 0.5
                 UPH.axpy(0.5, UP_)
                 print UPH.norm('l2')
@@ -153,22 +156,13 @@ def mixed_solve(problem, element):
                 N1.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                W.mult(F0, b_0)
-                b_0 *= 1.5
-                W.mult(F1, b_1)
-                b_0.axpy(-0.5, b_1)  # b_0 = W*(1.5*F0 - 0.5*F1)
-
-                N1.mult(UP0, b_1)    # b_1 = N1*UP0
-
-                K.mult(UP0, b)       # b = K*UP0
-                b.axpy(1, b_0)       # b = K*UP0 + W*(1.5*F0 - 0.5*F1)
-                b.axpy(-1, b_1)      # b = K*UP0 + W*(1.5*F0 - 0.5*F1) - N1*UP0
+                assemble(L1, tensor=b1)
 
                 # Apply boundary conditions
-                [bc.apply(N1, b) for bc in bcs]
+                [bc.apply(N1, b1) for bc in bcs]
 
                 # Get new solution with relaxation
-                solve(N1, UPH, b)
+                solve(N1, UPH, b1)
                 UPH *= 0.5
                 UPH.axpy(0.5, UP_)
                 print UPH.norm('l2')

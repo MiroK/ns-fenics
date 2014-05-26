@@ -138,7 +138,7 @@ class CylinderFlow(object):
     'Flow past a cylinder'
     name = 'cylinder'
     # Forcing
-    f = Constant((0., 0., 0.))
+    f = Constant((0., 0.))
     # versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
@@ -165,7 +165,7 @@ class LCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of L(V) shaped domain. Constant force.'
     name = 'l-cylinder-constant'
     # Forcing
-    f = Constant((0., 0., 0.))
+    f = Constant((0., 0.))
     # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
@@ -206,7 +206,7 @@ class OCylinderFlowConstant(object):
     'Flow past a cylinder in the bend of O shaped turn. Constant force.'
     name = 'o-cylinder-constant'
     # Forcing
-    f = Constant((0., 0., 0.))
+    f = Constant((0., 0.))
     # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
