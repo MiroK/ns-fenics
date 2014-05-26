@@ -222,11 +222,6 @@ if __name__ == '__main__':
     i_problem = int(raw_input('Select problem: '))
     i_element = int(raw_input('Select element: '))
 
-    # import sys
-    # assert len(sys.argv) == 3
-    # i_problem = sys.argv[1]
-    # i_element = sys.argv[2]
-
     if (-1 < i_problem < len(all_problems)) and\
             (-1 < i_element < len(all_elements)):
         problem = all_problems[i_problem]
