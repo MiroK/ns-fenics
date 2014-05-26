@@ -1,14 +1,26 @@
 from elements import all_elements, make_function_spaces
 from problems import all_problems
+import mpi4py.MPI as mpi
 from dolfin import *
 import os
+
+comm = mpi.COMM_WORLD
+rank = comm.Get_rank()
+
+
+def p_print(arg):
+    'Print only on process 0.'
+    if rank == 0:
+        print arg
 
 set_log_level(WARNING)
 
 
 def mixed_solve(problem, element):
     'Mixed solver.'
-    print 'Solving %s problem with %s element' % (problem.name, element.name)
+    p_print('Solving %s problem with %s element' % (problem.name, element.name))
+    timer = Timer('Mixed solver')
+    timer.start()
 
     # Make directory for results
     results_root = 'results/foo'
@@ -52,6 +64,7 @@ def mixed_solve(problem, element):
 
     # Time step
     h = mesh.hmin()
+    h = MPI.min(h)
     dt = Constant(0.25*h/U_max)
     k = dt**-1
 
@@ -73,11 +86,9 @@ def mixed_solve(problem, element):
     # Forms for assembling rhs
     f_ab = 1.5*f0 - 0.5*f1
 
-    L0 = k*inner(u0, v)*dx - Constant(0.5)*Re**-1*inner(grad(u0), grad(v))*dx +\
-        inner(f0, v)*dx
-
-    L1 = k*inner(u0, v)*dx - Constant(0.5)*Re**-1*inner(grad(u0), grad(v))*dx +\
-        inner(f_ab, v)*dx - Constant(0.5)*inner(dot(grad(u0), u_ab), v)*dx
+    L0 = inner(f0, v)*dx
+    L1 = inner(f_ab, v)*dx
+    K = assemble(k*w - s)
 
     # Aux form to get consisten b0, b1 vectors
     L = inner(Constant((0, 0)), v)*dx
@@ -108,7 +119,7 @@ def mixed_solve(problem, element):
     while t < T:
         t += float(dt)
         step += 1
-        print '\nstep number =', step, ', time =', t
+        p_print('\nstep number = %d, time = %g' % (step, t))
 
         u_in.t = t
 
@@ -122,20 +133,22 @@ def mixed_solve(problem, element):
         while not converged and iter < iter_max:
 
             iter += 1
-            print '\titer number =', iter
+            p_print('\titer number = %d' % iter)
 
             # Remeber the old solution
             UP_.zero()
             UP_.axpy(1, UPH)
 
-            if step == 0:
+            if step == 1:
                 # Assemble the t-dep part of lhs matrix and
                 # add to A to it yielding comple lhs matrix N0
                 N0 = assemble(n0)
                 N0.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                assemble(L0, tensor=b0)
+                assemble(L0, tensor=b0) # b0 =inner(f0, v)*dx
+                K.mult(UP0, b1)         # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                b0.axpy(1, b1)
 
                 # Apply boundary conditions
                 [bc.apply(N0, b0) for bc in bcs]
@@ -144,7 +157,6 @@ def mixed_solve(problem, element):
                 solve(N0, UPH, b0)
                 UPH *= 0.5
                 UPH.axpy(0.5, UP_)
-                print UPH.norm('l2')
 
                 # Assign UPH to UP0
                 UP0.zero()
@@ -153,10 +165,15 @@ def mixed_solve(problem, element):
                 # Assemble the t-dep part of lhs matrix and
                 # add to A to it yielding comple lhs matrix N0
                 N1 = assemble(n1)
+                N1.mult(UP0, b1)        # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
+
                 N1.axpy(1, A, False)
 
                 # Put together the rhs vector b
-                assemble(L1, tensor=b1)
+                assemble(L1, tensor=b0) # b0 = inner(f_ab, v)*dx
+                b0.axpy(-1, b1)         # b0 = b0 - b1
+                K.mult(UP0, b1)  # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+                b1.axpy(1, b0)
 
                 # Apply boundary conditions
                 [bc.apply(N1, b1) for bc in bcs]
@@ -165,7 +182,6 @@ def mixed_solve(problem, element):
                 solve(N1, UPH, b1)
                 UPH *= 0.5
                 UPH.axpy(0.5, UP_)
-                print UPH.norm('l2')
 
                 # Assign UP0 to UP1, UPH to UP0
                 UP1.zero()
@@ -176,6 +192,7 @@ def mixed_solve(problem, element):
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')
+            E = -1
             if iter < 2:
                 e0 = e
                 converged = False
@@ -184,7 +201,7 @@ def mixed_solve(problem, element):
                 converged = E < tol
                 e0 = e
 
-            print '\t error =', E
+            p_print('\t error = %g' % E)
 
         # TODO handle transient forces!!
 
@@ -211,23 +228,39 @@ def mixed_solve(problem, element):
     div_u = project(div(u0), Div_space)
     local_div_m = norm(div_u, 'L2')
 
-    return '%s %s Global: %g, Mikael: %g, Garth: %g' %\
-        (problem.name, element.name, global_div, local_div_m, local_div_g)
+    # Collect timer info
+    time = timer.stop()
+    time = MPI.sum(time)
+
+    return '%s %s Global: %g, Mikael: %g, Garth: %g, time: %g, proc.: %d' %\
+        (problem.name, element.name,
+         global_div, local_div_m, local_div_g,
+         time, comm.Get_size())
 
 if __name__ == '__main__':
 
-    print 'Problems:', [(i, problem) for i, problem in enumerate(all_problems)]
-    print 'Elements', [(i, element) for i, element in enumerate(all_elements)]
+    p_print('Problems:')
+    p_print([(i, problem) for i, problem in enumerate(all_problems)])
+    p_print('Elements')
+    p_print([(i, element) for i, element in enumerate(all_elements)])
 
-    i_problem = int(raw_input('Select problem: '))
-    i_element = int(raw_input('Select element: '))
+    if rank == 0:
+        i_problem = int(raw_input('Select problem: '))
+        i_element = int(raw_input('Select element: '))
+    else:
+        i_problem, i_element = None, None
+
+    i_problem = comm.bcast(i_problem, root=0)
+    i_element = comm.bcast(i_element, root=0)
 
     if (-1 < i_problem < len(all_problems)) and\
             (-1 < i_element < len(all_elements)):
         problem = all_problems[i_problem]
         element = all_elements[i_element]
         result = mixed_solve(problem, element)
-        with open('data.txt', 'a') as f:
-            f.write('%s\n' % result)
+
+        if rank == 0:
+            with open('data.txt', 'a') as f:
+                f.write('%s\n' % result)
     else:
         exit()
