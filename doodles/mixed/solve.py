@@ -67,8 +67,10 @@ def mixed_solve(problem, element):
     # Form for other time steps
     u_ab = 1.5*u0 - 0.5*u1
     f_ab = 1.5*f0 - 0.5*f1
+    #p_cn = 0.5*(p + p0)
+    p_cn = p
     F = k*inner(u - u0, v)*dx + inner(dot(grad(u_cn), u_ab), v)*dx +\
-        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
+        Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p_cn, div(v))*dx -\
         inner(q, div(u))*dx - inner(f_ab, v)*dx
     a, L = system(F)
 
@@ -87,8 +89,12 @@ def mixed_solve(problem, element):
     u_out.parameters['rewrite_function_mesh'] = False
     u_plot = Function(V)
     while t < T:
-        t += float(dt)
+        # Make the first step which is first accurate much smaller than other
+        # dt
         step += 1
+        dt_ = float(dt)/100 if step == 1 else float(dt)
+        t += dt_
+
         print '\nstep number =', step, ', time =', t
 
         u_in.t = t
