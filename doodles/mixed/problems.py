@@ -130,6 +130,31 @@ class InflowProfilePeriodic(Expression):
 # ------------------------------------------------------------------------------
 
 
+class PoiseuilleFlow(object):
+    'Nonlinear transient Poiseuille flow.'
+    name = 'poiseuille'
+    # Forcing
+    f = Constant((0., 0.))
+
+    # Mesh and function marking facets
+    mesh = Mesh(mesh_path('square.xdmf'))
+    f_f = MeshFunction('size_t', mesh, mesh_path('square_facet_region.xdmf'))
+
+    # Noslip and press. pressure domains to be used for BC construction
+    inflow = None
+    inflow = None
+    noslip = [f_f, 8]
+    pressure = [f_f, 7]
+
+    # Duration
+    T = 8
+
+    Re = Constant(1)
+    U_max = Re(0)/8.  # Re*|dP/dx|/8.
+    u_in = None
+    p_in = Expression('1-x[0]')
+
+
 class CylinderFlow(object):
     'Flow past a cylinder'
     name = 'cylinder'
@@ -235,6 +260,7 @@ class OCylinderFlowPeriodic(OCylinderFlowConstant):
                                  K=LCylinderFlowConstant.T,
                                  compute_width=compute_width_O_cylinder)
 
-all_problems = [CylinderFlow,
+all_problems = [PoiseuilleFlow,
+                CylinderFlow,
                 LCylinderFlowConstant, LCylinderFlowPeriodic,
                 OCylinderFlowConstant, OCylinderFlowPeriodic]

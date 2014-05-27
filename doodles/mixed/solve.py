@@ -26,13 +26,19 @@ def mixed_solve(problem, element):
     f = problem.f
     T = problem.T
 
+    pressure_boundary = problem.pressure
+    p_in = problem.p_in
+
     # Create function space with element
     V, Q, M = make_function_spaces(mesh, element)
 
     # Create boundary conditions
     bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), *noslip_boundary)
-    bc_inflow = DirichletBC(M.sub(0), u_in, *inflow_boundary)
-    bcs = [bc_noslip, bc_inflow]
+    if inflow_boundary is not None:
+        bc_inflow = DirichletBC(M.sub(0), u_in, *inflow_boundary)
+    else:
+        bc_inflow = None
+    bcs = [bc_noslip]
 
     up = TrialFunction(M)
     u, p = split(up)
@@ -62,6 +68,13 @@ def mixed_solve(problem, element):
     F0 = k*inner(u - u0, v)*dx + inner(dot(grad(u), u0), v)*dx +\
         Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p, div(v))*dx -\
         inner(q, div(u))*dx - inner(f0, v)*dx
+
+    if pressure_boundary is not None and p_in is not None:
+        ds = Measure('ds')[pressure_boundary[0]]
+        p_value = p_in
+        n = FacetNormal(mesh)
+        F0 += inner(p_value*n - dot(grad(u_cn), n), v)*ds(pressure_boundary[1])
+
     a0, L0 = system(F0)
 
     # Form for other time steps
@@ -72,6 +85,13 @@ def mixed_solve(problem, element):
     F = k*inner(u - u0, v)*dx + inner(dot(grad(u_cn), u_ab), v)*dx +\
         Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p_cn, div(v))*dx -\
         inner(q, div(u))*dx - inner(f_ab, v)*dx
+
+    if pressure_boundary is not None and p_in is not None:
+        ds = Measure('ds')[pressure_boundary[0]]
+        p_value = p_in
+        n = FacetNormal(mesh)
+        F += inner(p_value*n - dot(grad(u_cn), n), v)*ds(pressure_boundary[1])
+
     a, L = system(F)
 
     # Solution at current level t
@@ -97,7 +117,7 @@ def mixed_solve(problem, element):
 
         print '\nstep number =', step, ', time =', t
 
-        u_in.t = t
+        #u_in.t = t
 
         # Pickard loop
         iter = 0
@@ -126,6 +146,7 @@ def mixed_solve(problem, element):
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')
+            print e
             if iter < 2:
                 e0 = e
                 converged = False
