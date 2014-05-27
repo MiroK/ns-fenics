@@ -139,7 +139,6 @@ class CylinderFlow(object):
     name = 'cylinder'
     # Forcing
     f = Constant((0., 0.))
-    # versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = mesh
@@ -166,7 +165,6 @@ class LCylinderFlowConstant(object):
     name = 'l-cylinder-constant'
     # Forcing
     f = Constant((0., 0.))
-    # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = Mesh(mesh_path('l-cylinder.xdmf'))
@@ -207,7 +205,6 @@ class OCylinderFlowConstant(object):
     name = 'o-cylinder-constant'
     # Forcing
     f = Constant((0., 0.))
-    # Versus Constant((0, 0)) gives 11:41 vs 10:56, TODO worth it?
 
     # Mesh and function marking facets
     mesh = Mesh(mesh_path('o-cylinder.xdmf'))
