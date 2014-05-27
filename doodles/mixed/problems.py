@@ -149,7 +149,7 @@ class CylinderFlow(object):
     # Duration
     T = 8
 
-    Re = Constant(100)
+    Re = Constant(1000)
     U_max = 1.5
     u_in = Expression(('4*Um*(x[1]*(ymax-x[1]))*sin(pi*t/K)/(ymax*ymax)',
                        '0.0'),
