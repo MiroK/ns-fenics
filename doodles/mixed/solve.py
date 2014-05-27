@@ -124,40 +124,35 @@ def mixed_solve(problem, element):
     solver = LUSolver('mumps')
     solver.parameters['same_nonzero_pattern'] = True
 
+    # Pickard iteration variables
+    iter_max = 40
+    tol = 1E-4
+
+    # Begin time loop
     t = 0
     step = 0
-    dt_ = dt(0)
-    while t < T:
-        # FIXME, there are too many places where step == 1 is needed - refactor
-
+    # The first iteration is used to start the rest
+    # It's a O(dt) scheme so small time step is used
+    dt_ = dt(0)/100
+    while t < dt_:  # Idented for readability
         step += 1
-        # Make the first step which is first order accurate quite small
-        t += dt_/100 if step == 1 else dt_
+        t += dt_
         p_print('\nstep number = %d, time = %g' % (step, t))
 
+        # Set up transient bcs
         u_in.t = t
         # boundary values is G^{n+1}
         g_ = interpolate(u_in, V)
         g_.update()  # TODO is it necessary to update?
         G.zero()
         G.axpy(1, g_.vector())
-        if step > 1:
-            G *= 0.5          # 0.5*G^{n+1}
-
-            u_in.t = t - dt_
-            g_ = interpolate(u_in, V)
-            g_.update()
-            G.axpy(0.5, g_.vector()) # G = 0.5*G^{n+1} + 0.5*G^{n}
 
         # Pickard loop
         iter = 0
-        iter_max = 40
-        tol = 1E-4
         converged = False
         e0 = None
         E = None
         while not converged and iter < iter_max:
-
             iter += 1
             p_print('\titer number = %d' % iter)
 
@@ -165,62 +160,110 @@ def mixed_solve(problem, element):
             UP_.zero()
             UP_.axpy(1, UPH)
 
-            if step == 1:
-                # Assemble the t-dep part of lhs matrix and
-                # add to A to it yielding comple lhs matrix N0
-                N0 = assemble(n0)
-                N0.axpy(1, A0, False)
+            # Assemble the t-dep part of lhs matrix and
+            # add to A to it yielding comple lhs matrix N0
+            N0 = assemble(n0)
+            N0.axpy(1, A0, False)
 
-                # Put together the rhs vector b
-                # b0 =inner(f0, v)*dx
-                assemble(L0, tensor=b0)
-                # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
-                K0.mult(UP0, b1)
-                b0.axpy(1, b1)
+            # Put together the rhs vector b
+            # b0 =inner(f0, v)*dx
+            assemble(L0, tensor=b0)
+            # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+            K0.mult(UP0, b1)
+            b0.axpy(1, b1)
 
-                # Apply boundary conditions
-                [bc.apply(N0, b0) for bc in bcs]
+            # Apply boundary conditions
+            [bc.apply(N0, b0) for bc in bcs]
 
-                # Get new solution with relaxation
-                solve(N0, UPH, b0)
-                UPH *= 0.5
-                UPH.axpy(0.5, UP_)
+            # Get new solution with relaxation
+            solve(N0, UPH, b0)
+            UPH *= 0.5
+            UPH.axpy(0.5, UP_)
 
-                # Assign UPH to UP0
-                UP0.zero()
-                UP0.axpy(1, UPH)
+            # Assign UPH to UP0
+            UP0.zero()
+            UP0.axpy(1, UPH)
+
+            # Compute the error and decide convergence
+            e = norm(uh, 'l2')
+            E = -1
+            if iter < 2:
+                e0 = e
+                converged = False
             else:
-                # Assemble the t-dep part of lhs matrix and
-                N1 = assemble(n1)
-                # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
-                N1.mult(UP0, b1)
-                # Add to A to N1 it yielding comple lhs matrix N0
-                N1.axpy(1, A1, False)
+                E = abs(e - e0)/(e + e0)
+                converged = E < tol
+                e0 = e
 
-                # Put together the rhs vector b
-                # b0 = inner(f_ab, v)*dx
-                assemble(L1, tensor=b0)
-                # b0 = b0 - b1, includes nonlinearity
-                b0.axpy(-1, b1)
-                # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
-                K1.mult(UP0, b1)
-                b1.axpy(1, b0)
+            p_print('\t error = %g' % E)
 
-                # Apply boundary conditions
-                [bc.apply(N1, b1) for bc in bcs]
+        # TODO handle transient forces!!
 
-                # Get new solution with relaxation
-                solve(N1, UPH, b1)
-                UPH *= 0.5
-                UPH.axpy(0.5, UP_)
+    # The rest of iteration is O(dt**2) scheme
+    dt_ = dt(0)
+    while t < T:
+        step += 1
+        t += dt_
+        p_print('\nstep number = %d, time = %g' % (step, t))
 
-                # Assign UP0 to UP1, UPH to UP0
-                UP1.zero()
-                UP1.axpy(1, UP0)
+        # Setup transient boundary conditions
+        u_in.t = t
+        # boundary values is G^{n+1}
+        g_ = interpolate(u_in, V)
+        g_.update()  # TODO is it necessary to update?
+        G.zero()
+        G.axpy(1, g_.vector())
+        G *= 0.5          # 0.5*G^{n+1}
 
-                # Assign UPH to UP0
-                UP0.zero()
-                UP0.axpy(1, UPH)
+        u_in.t = t - dt_
+        g_ = interpolate(u_in, V)
+        g_.update()
+        G.axpy(0.5, g_.vector()) # G = 0.5*G^{n+1} + 0.5*G^{n}
+
+        # Pickard loop
+        iter = 0
+        converged = False
+        e0 = None
+        E = None
+        while not converged and iter < iter_max:
+            iter += 1
+            p_print('\titer number = %d' % iter)
+
+            # Remeber the old solution
+            UP_.zero()
+            UP_.axpy(1, UPH)
+
+            # Assemble the t-dep part of lhs matrix and
+            N1 = assemble(n1)
+            # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
+            N1.mult(UP0, b1)
+            # Add to A to N1 it yielding comple lhs matrix N0
+            N1.axpy(1, A1, False)
+
+            # Put together the rhs vector b
+            # b0 = inner(f_ab, v)*dx
+            assemble(L1, tensor=b0)
+            # b0 = b0 - b1, includes nonlinearity
+            b0.axpy(-1, b1)
+            # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
+            K1.mult(UP0, b1)
+            b1.axpy(1, b0)
+
+            # Apply boundary conditions
+            [bc.apply(N1, b1) for bc in bcs]
+
+            # Get new solution with relaxation
+            solve(N1, UPH, b1)
+            UPH *= 0.5
+            UPH.axpy(0.5, UP_)
+
+            # Assign UP0 to UP1, UPH to UP0
+            UP1.zero()
+            UP1.axpy(1, UP0)
+
+            # Assign UPH to UP0
+            UP0.zero()
+            UP0.axpy(1, UPH)
 
             # Compute the error and decide convergence
             e = norm(uh, 'l2')
@@ -241,6 +284,7 @@ def mixed_solve(problem, element):
             u_plot.assign(up0.split(True)[0])
             plot(u_plot, title='%s @ %g' % (element.name, t))
             u_out << u_plot, t
+    # End time loop
 
     # Check global mass conservation
     n = FacetNormal(mesh)
