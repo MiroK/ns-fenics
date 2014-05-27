@@ -24,7 +24,7 @@ def mixed_solve(problem, element):
     timer.start()
 
     # Make directory for results
-    results_root = 'results/foo'
+    results_root = 'results/bar'
     results_dir = os.path.join(results_root, element.name, problem.name)
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
@@ -43,8 +43,10 @@ def mixed_solve(problem, element):
     V, Q, M = make_function_spaces(mesh, element)
 
     # Create boundary conditions
+    g = Function(V)  # Hold boundary values, needed to interpolate in time
+    G = g.vector()
     bc_noslip = DirichletBC(M.sub(0), Constant((0., 0.)), *noslip_boundary)
-    bc_inflow = DirichletBC(M.sub(0), u_in, *inflow_boundary)
+    bc_inflow = DirichletBC(M.sub(0), g, *inflow_boundary)
     bcs = [bc_noslip, bc_inflow]
 
     up = TrialFunction(M)
@@ -65,7 +67,7 @@ def mixed_solve(problem, element):
 
     # Time step
     h = mesh.hmin()
-    h = MPI.min(h)
+    h = MPI.min(h)  # Get unique h accross processes
     dt = Constant(0.25*h/U_max)
     k = dt**-1
 
@@ -82,7 +84,10 @@ def mixed_solve(problem, element):
     s = Constant(0.5)*Re**-1*inner(grad(u), grad(v))*dx  # ~stiffness m. form
     bt = -inner(p, div(v))*dx        # divergence form
     b = -inner(q, div(u))*dx         # gradient form
-    A = assemble(k*w + s + bt + b)   # part of lhs matrix which stays constant
+    # part of lhs matrix which stays constant in step == 1
+    A0 = assemble(k*w + s + bt + b)
+    # part of lhs matrix which stays constant in step > 1
+    A1 = assemble(k*w + s + 0.5*bt + 0.5*b)
 
     # Forms for assembling rhs
     f_ab = 1.5*f0 - 0.5*f1
@@ -90,7 +95,10 @@ def mixed_solve(problem, element):
     L0 = inner(f0, v)*dx     # Both L0, L1 can be obtained as matrix*vector
     L1 = inner(f_ab, v)*dx   # but that saves 13s in 11:20s calc and
                              # requires f to be in M (not V) so inconvenient
-    K = assemble(k*w - s)    # K*U0 is part of rhs vector
+    # K0*U0 is part of rhs vector in step == 1
+    K0 = assemble(k*w - s)
+    # K1*U0 is part of rhs vector in steps > 1
+    K1 = assemble(k*w - s - 0.5*bt - 0.5*b)
 
     # Auxiliary form to get consistent b0, b1 vectors
     L = inner(Constant((0, 0)), v)*dx
@@ -118,12 +126,28 @@ def mixed_solve(problem, element):
 
     t = 0
     step = 0
+    dt_ = dt(0)
     while t < T:
-        t += float(dt)
+        # FIXME, there are too many places where step == 1 is needed - refactor
+
         step += 1
+        # Make the first step which is first order accurate quite small
+        t += dt_/100 if step == 1 else dt_
         p_print('\nstep number = %d, time = %g' % (step, t))
 
         u_in.t = t
+        # boundary values is G^{n+1}
+        g_ = interpolate(u_in, V)
+        g_.update()  # TODO is it necessary to update?
+        G.zero()
+        G.axpy(1, g_.vector())
+        if step > 1:
+            G *= 0.5          # 0.5*G^{n+1}
+
+            u_in.t = t - dt_
+            g_ = interpolate(u_in, V)
+            g_.update()
+            G.axpy(0.5, g_.vector()) # G = 0.5*G^{n+1} + 0.5*G^{n}
 
         # Pickard loop
         iter = 0
@@ -145,13 +169,13 @@ def mixed_solve(problem, element):
                 # Assemble the t-dep part of lhs matrix and
                 # add to A to it yielding comple lhs matrix N0
                 N0 = assemble(n0)
-                N0.axpy(1, A, False)
+                N0.axpy(1, A0, False)
 
                 # Put together the rhs vector b
                 # b0 =inner(f0, v)*dx
                 assemble(L0, tensor=b0)
                 # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
-                K.mult(UP0, b1)
+                K0.mult(UP0, b1)
                 b0.axpy(1, b1)
 
                 # Apply boundary conditions
@@ -171,7 +195,7 @@ def mixed_solve(problem, element):
                 # b1 = 0.5*inner(dot(grad(u0), u_ab), v)*dx
                 N1.mult(UP0, b1)
                 # Add to A to N1 it yielding comple lhs matrix N0
-                N1.axpy(1, A, False)
+                N1.axpy(1, A1, False)
 
                 # Put together the rhs vector b
                 # b0 = inner(f_ab, v)*dx
@@ -179,7 +203,7 @@ def mixed_solve(problem, element):
                 # b0 = b0 - b1, includes nonlinearity
                 b0.axpy(-1, b1)
                 # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
-                K.mult(UP0, b1)
+                K1.mult(UP0, b1)
                 b1.axpy(1, b0)
 
                 # Apply boundary conditions
