@@ -87,8 +87,9 @@ def mixed_solve(problem, element):
     # Forms for assembling rhs
     f_ab = 1.5*f0 - 0.5*f1
 
-    L0 = inner(f0, v)*dx     # Both L0, L1 can be obtained as matrix vector
-    L1 = inner(f_ab, v)*dx   # product, TODO
+    L0 = inner(f0, v)*dx     # Both L0, L1 can be obtained as matrix*vector
+    L1 = inner(f_ab, v)*dx   # but that saves 13s in 11:20s calc and
+                             # requires f to be in M (not V) so inconvenient
     K = assemble(k*w - s)    # K*U0 is part of rhs vector
 
     # Auxiliary form to get consistent b0, b1 vectors
@@ -175,7 +176,7 @@ def mixed_solve(problem, element):
                 # Put together the rhs vector b
                 # b0 = inner(f_ab, v)*dx
                 assemble(L1, tensor=b0)
-                # b0 = b0 - b1
+                # b0 = b0 - b1, includes nonlinearity
                 b0.axpy(-1, b1)
                 # b1 = k*inner(u0, v) - 0.5*inner(grad(u0), grad(v))*dx
                 K.mult(UP0, b1)
