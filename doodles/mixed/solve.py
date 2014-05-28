@@ -67,11 +67,10 @@ def mixed_solve(problem, element):
     # Form for other time steps
     u_ab = 1.5*u0 - 0.5*u1
     f_ab = 1.5*f0 - 0.5*f1
-    #p_cn = 0.5*(p + p0)
-    p_cn = p
+    p_cn = 0.5*(p + p0)
     F = k*inner(u - u0, v)*dx + inner(dot(grad(u_cn), u_ab), v)*dx +\
         Re**-1*inner(grad(u_cn), grad(v))*dx - inner(p_cn, div(v))*dx -\
-        inner(q, div(u))*dx - inner(f_ab, v)*dx
+        inner(q, div(u_cn))*dx - inner(f_ab, v)*dx
     a, L = system(F)
 
     # Solution at current level t
